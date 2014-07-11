@@ -23,7 +23,7 @@ type DuplicateModel struct {
 	DuplicateList []*DuplicateData
 }
 
-func GetDuplicateModel(uid int64) *DuplicateModel {
+func NewDuplicateModel(uid int64) *DuplicateModel {
 
 	var Duplicate DuplicateModel
 

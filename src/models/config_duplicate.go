@@ -1,15 +1,10 @@
 package models
 
-var duplicate_config_map map[int]*ConfigDuplicate
+var duplicate_config_list []*ConfigDuplicate
 
 func init() {
-	var temp []*ConfigDuplicate
-	if _, err := DB().Select(&temp, "SELECT * FROM config_duplicate"); err != nil {
+	if _, err := DB().Select(&duplicate_config_list, "SELECT * FROM config_duplicate ORDER BY duplicate_config_id ASC "); err != nil {
 		panic(err)
-	}
-	duplicate_config_map = make(map[int]*ConfigDuplicate)
-	for _, duplicate := range temp {
-		duplicate_config_map[duplicate.ConfigId] = duplicate
 	}
 }
 
@@ -20,11 +15,13 @@ type ConfigDuplicate struct {
 	SectionName string `db:"duplicate_section_name"`
 	Chapter     int    `db:"duplicate_chapter"`
 	Section     int    `db:"duplicate_section"`
-	NPC         int    `db:"duplicate_npc"`
-	Items       int    `db:"duplicate_items"`
-	Generals    int    `db:"duplicate_generals"`
+	NPC         string `db:"duplicate_npc"`
+	Items       string `db:"duplicate_items"`
+	Generals    string `db:"duplicate_generals"`
+	ChapterDesc string `db:"duplicate_chapter_desc"`
+	SectionDesc string `db:"duplicate_section_desc"`
 }
 
-func ConfigDuplicateMap() map[int]*ConfigDuplicate {
-	return duplicate_config_map
+func ConfigDuplicateList() []*ConfigDuplicate {
+	return duplicate_config_list
 }
