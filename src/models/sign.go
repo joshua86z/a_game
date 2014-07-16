@@ -1,66 +1,80 @@
 package models
 
 import (
-	"fmt"
+	"database/sql"
+//	"fmt"
 	"time"
 )
 
 // role_sign
-type SignData struct {
-	Id     int    `db:"sign_id"`
+type SignModel struct {
 	Uid    int64  `db:"uid"`
 	Date   string `db:"sign_date"`
+	Times  int    `db:"sign_times"`
 	Reward bool   `db:"sign_reward"`
 }
 
 func init() {
-	DB().AddTableWithName(SignData{}, "role_sign").SetKeys(true, "Id")
+	DB().AddTableWithName(SignModel{}, "role_sign").SetKeys(false, "Uid")
 }
 
-type SignModel struct {
-	Uid      int64
-	SignList []*SignData
-}
+func NewSignModel(uid int64) *SignModel {
 
-func GetSignModel(uid int64) *SignModel {
-
-	var Sign SignModel
-
-	var temp []*SignData
-	_, err := DB().Select(&temp, "SELECT * FROM role_sign WHERE uid = ? ", uid)
-	if err != nil {
-		DBError(err)
+	SignModel := &SignModel{}
+	if err := DB().SelectOne(SignModel, "SELECT * FROM role_sign WHERE uid = ? ", uid); err != nil {
+		if err != sql.ErrNoRows {
+			DBError(err)
+		}
+		SignModel.Uid = uid
+		SignModel.Date = time.Now().Format("20060102")
+		SignModel.Times = 1
+		SignModel.Reward = false
+		err = DB().Insert(SignModel)
+		if err != nil {
+			DBError(err)
+		}
+		return NewSignModel(uid)
 	}
 
-	Sign.Uid = uid
-	Sign.SignList = temp
-
-	return &Sign
+	return SignModel
 }
 
-func (this *SignModel) List() []*SignData {
-	return this.SignList
-}
-
-func (this *SignModel) GetSign(signId int) *SignData {
-	for _, sign := range this.SignList {
-		if sign.Id == signId {
-			return sign
+//
+func (this *SignModel) Sign() error {
+	now := time.Now()
+	if this.Date == now.Format("20060102") {
+		return nil
+	}
+	if this.Date == now.AddDate(0, 0, -1).Format("20060102") {
+		this.Date = now.Format("20060102")
+		if this.Reward {
+			this.Times = 1
+		} else {
+			this.Times += 1
 		}
 	}
-	panic(fmt.Sprintf("没有这条数据 %d", signId))
+
+	_, err := DB().Update(this)
+	return err
 }
 
-func InsertSign(uid int64) *SignData {
-
-	sign := &SignData{}
-
-	sign.Uid = uid
-	sign.Date = time.Now().Format("20060102")
-
-	if err := DB().Insert(sign); err != nil {
-		DBError(err)
-	}
-
-	return sign
+func (this *SignModel) GetReward() error {
+	this.Reward = true
+	_, err := DB().Update(this)
+	return err
 }
+
+//
+//func InsertSign(uid int64) *SignData {
+//
+//	sign := &SignData{}
+//
+//	sign.Uid = uid
+//	sign.Date = time.Now().Format("20060102")
+//
+//	if err := DB().Insert(sign); err != nil {
+//		DBError(err)
+//	}
+//
+//	return sign
+//}

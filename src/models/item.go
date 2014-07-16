@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -20,11 +19,11 @@ func init() {
 }
 
 type ItemModel struct {
-	Uid         int64
+	Uid      int64
 	ItemList []*ItemData
 }
 
-func GetItemModel(uid int64) *ItemModel {
+func NewItemModel(uid int64) *ItemModel {
 
 	var Item ItemModel
 
@@ -44,13 +43,13 @@ func (this *ItemModel) List() []*ItemData {
 	return this.ItemList
 }
 
-func (this *ItemModel) GetItem(itemId int) *ItemData {
+func (this *ItemModel) Item(itemId int) *ItemData {
 	for _, item := range this.ItemList {
 		if item.Id == itemId {
 			return item
 		}
 	}
-	panic(fmt.Sprintf("没有这个道具 %d", itemId))
+	return nil
 }
 
 func (this *ItemData) LevelUp() error {
@@ -66,27 +65,18 @@ func (this *ItemData) LevelUpCoin() int {
 	return this.Level * 10
 }
 
-func InsertItem(uid int64, configId int) *ItemData {
-
-	c := ConfigItemMap()[configId]
+func InsertItem(uid int64, config *ConfigItem) *ItemData {
 
 	item := &ItemData{}
-
 	item.Uid = uid
-	item.ConfigId = configId
-	item.Name = c.Name
+	item.ConfigId = config.ConfigId
+	item.Name = config.Name
 	item.Level = 1
 	item.UnixTime = time.Now().Unix()
 
 	if err := DB().Insert(item); err != nil {
-		DBError(err)
+		return nil
 	}
 
 	return item
-}
-
-func DeleteItem(itemId int) error {
-
-	_, err := DB().Exec("DELETE FROM role_items WHERE item_id = ? ", itemId)
-	return err
 }

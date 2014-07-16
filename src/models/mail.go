@@ -25,7 +25,7 @@ type MailModel struct {
 	MailList []*MailData
 }
 
-func GetMailModel(uid int64) *MailModel {
+func NewMailModel(uid int64) *MailModel {
 
 	var Mail MailModel
 

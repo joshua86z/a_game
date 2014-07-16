@@ -1,5 +1,12 @@
 package models
 
+import (
+	"fmt"
+	"libs/lua"
+	"strconv"
+	"strings"
+)
+
 var general_config_map map[int]*ConfigGeneral
 
 func init() {
@@ -22,15 +29,86 @@ type ConfigGeneral struct {
 	Def        int    `db:"general_def"`
 	Hp         int    `db:"general_hp"`
 	Speed      int    `db:"general_speed"`
+	Dex        int    `db:"general_dex"`
 	Range      int    `db:"general_range"`
+	AtkRange   int    `db:"general_atk_range"`
 	AtkGroup   int    `db:"general_atk_group"`
 	DefGroup   int    `db:"general_def_group"`
 	HpGroup    int    `db:"general_hp_group"`
 	SpeedGroup int    `db:"general_speed_group"`
+	DexGroup   int    `db:"general_dex_group"`
 	RangeGroup int    `db:"general_range_group"`
 	Desc       string `db:"general_desc"`
 }
 
 func ConfigGeneralMap() map[int]*ConfigGeneral {
-	return general_config_map
+
+	result := make(map[int]*ConfigGeneral)
+
+	Lua, _ := lua.NewLua("conf/general.lua")
+
+	var configId int
+	for {
+		configId++
+		itemStr := Lua.GetString(fmt.Sprintf("general_%d", configId))
+		if itemStr == "" {
+			break
+		}
+		array := strings.Split(itemStr, "\\,")
+		result[configId] = &ConfigGeneral{
+			ConfigId:   configId,
+			Name:       array[0],
+			Type:       Atoi(array[1]),
+			Atk:        Atoi(array[2]),
+			Def:        Atoi(array[3]),
+			Hp:         Atoi(array[4]),
+			Speed:      Atoi(array[5]),
+			Dex:        Atoi(array[6]),
+			Range:      Atoi(array[7]),
+			AtkRange:   Atoi(array[8]),
+			AtkGroup:   Atoi(array[9]),
+			DefGroup:   Atoi(array[10]),
+			HpGroup:    Atoi(array[11]),
+			SpeedGroup: Atoi(array[12]),
+			DexGroup:   Atoi(array[13]),
+			RangeGroup: Atoi(array[14]),
+			Desc:       array[15]}
+	}
+
+	Lua.Close()
+	return result
+}
+
+func ConfigGeneralById(configId int) *ConfigGeneral {
+
+	Lua, _ := lua.NewLua("conf/general.lua")
+
+	itemStr := Lua.GetString(fmt.Sprintf("general_%d", configId))
+	array := strings.Split(itemStr, "\\,")
+
+	Lua.Close()
+
+	return &ConfigGeneral{
+		ConfigId:   configId,
+		Name:       array[0],
+		Type:       Atoi(array[1]),
+		Atk:        Atoi(array[2]),
+		Def:        Atoi(array[3]),
+		Hp:         Atoi(array[4]),
+		Speed:      Atoi(array[5]),
+		Dex:        Atoi(array[6]),
+		Range:      Atoi(array[7]),
+		AtkRange:   Atoi(array[8]),
+		AtkGroup:   Atoi(array[9]),
+		DefGroup:   Atoi(array[10]),
+		HpGroup:    Atoi(array[11]),
+		SpeedGroup: Atoi(array[12]),
+		DexGroup:   Atoi(array[13]),
+		RangeGroup: Atoi(array[14]),
+		Desc:       array[15]}
+}
+
+func Atoi(s string) int {
+	i, _ := strconv.Atoi(s)
+	return i
 }

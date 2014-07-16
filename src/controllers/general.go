@@ -2,16 +2,96 @@ package controllers
 
 import (
 	"code.google.com/p/goprotobuf/proto"
+	"fmt"
 	"models"
 	"protodata"
 )
 
-func getGeneralProto(general *models.GeneralData) protodata.GeneralData {
+func LevelUp(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
 
-	config := models.ConfigGeneralMap()[general.ConfigId]
+	var configId int = 1
+
+	RoleModel := models.NewRoleModel(uid)
+	general := models.NewGeneralModel(uid).General(configId)
+
+	config := models.ConfigGeneralById(general.ConfigId)
+
+	coin := levelUpCoin(general.Level)
+	if coin > RoleModel.Coin {
+		return ReturnStr(commandRequest, 21, "金币不足,无法升级"), fmt.Errorf("金币不足,无法升级")
+	}
+
+	if err := RoleModel.SubCoin(coin, models.A, config.Name); err != nil {
+		return ReturnStr(commandRequest, 25, "扣除金币失败,数据库出错"), fmt.Errorf("扣除金币失败,数据库出错")
+	}
+
+	if err := general.LevelUp(config); err != nil {
+		return ReturnStr(commandRequest, 25, "升级失败,数据库出错"), fmt.Errorf("升级失败,数据库出错")
+	}
+
+	generalProto := generalProto(general, config)
+
+	return ReturnStr(commandRequest, 1, generalProto), nil
+}
+
+func generalProtoList(generalList []*models.GeneralData) []*protodata.GeneralData {
+
+	var result []*protodata.GeneralData
+
+	configs := models.ConfigGeneralMap()
+	for _, config := range configs {
+
+		var generalData protodata.GeneralData
+		generalData.GeneralId = proto.Int32(int32(config.ConfigId))
+		generalData.GeneralName = proto.String(config.Name)
+		generalData.GeneralDesc = proto.String(config.Desc)
+		generalData.AtkR = proto.Int32(int32(config.AtkRange))
+		generalData.GeneralType = proto.Int32(int32(config.Type))
+
+		var find bool
+		for _, general := range generalList {
+			if general.ConfigId == config.ConfigId {
+				generalData.Level = proto.Int32(int32(general.Level))
+				generalData.Atk = proto.Int32(int32(general.Atk))
+				generalData.Def = proto.Int32(int32(general.Def))
+				generalData.Hp = proto.Int32(int32(general.Hp))
+				generalData.Speed = proto.Int32(int32(general.Speed))
+				generalData.Dex = proto.Int32(int32(general.Dex))
+				generalData.TriggerR = proto.Int32(int32(general.Range))
+				generalData.LevelUpCoin = proto.Int32(int32(generallevelUpCoin(general.Level)))
+				generalData.IsUnlock = proto.Bool(true)
+				generalData.KillNum = proto.Int32(int32(general.Speed))
+
+				find = true
+			}
+		}
+
+		if !find {
+			generalData.Level = proto.Int32(1)
+			generalData.Atk = proto.Int32(int32(config.Atk))
+			generalData.Def = proto.Int32(int32(config.Def))
+			generalData.Hp = proto.Int32(int32(config.Hp))
+			generalData.Speed = proto.Int32(int32(config.Speed))
+			generalData.Dex = proto.Int32(int32(config.Dex))
+			generalData.TriggerR = proto.Int32(int32(config.Range))
+			generalData.LevelUpCoin = proto.Int32(int32(generallevelUpCoin(1)))
+			generalData.IsUnlock = proto.Bool(false)
+			generalData.KillNum = proto.Int32(0)
+		}
+
+		result = append(result, &generalData)
+	}
+	return result
+}
+
+func generallevelUpCoin(level int) int {
+	return level
+}
+
+func generalProto(general *models.GeneralData, config *models.ConfigGeneral) *protodata.GeneralData {
 
 	var generalData protodata.GeneralData
-	generalData.GeneralId = proto.Int32(int32(general.Id))
+	generalData.GeneralId = proto.Int32(int32(config.ConfigId))
 	generalData.GeneralName = proto.String(config.Name)
 	generalData.GeneralDesc = proto.String(config.Desc)
 	generalData.Level = proto.Int32(int32(general.Level))
@@ -19,11 +99,12 @@ func getGeneralProto(general *models.GeneralData) protodata.GeneralData {
 	generalData.Def = proto.Int32(int32(general.Def))
 	generalData.Hp = proto.Int32(int32(general.Hp))
 	generalData.Speed = proto.Int32(int32(general.Speed))
-	generalData.Range = proto.Int32(int32(general.Range))
+	generalData.TriggerR = proto.Int32(int32(general.Range))
+	generalData.AtkR = proto.Int32(int32(config.AtkRange))
 	generalData.GeneralType = proto.Int32(int32(config.Type))
 	generalData.LevelUpCoin = proto.Int32(int32(general.Level))
-	generalData.IsUnlock = proto.Bool(false)
-	return generalData
+	generalData.IsUnlock = proto.Bool(true)
+	return &generalData
 }
 
 //

@@ -3,30 +3,64 @@ package controllers
 import (
 	"bytes"
 	"code.google.com/p/go.net/websocket"
-	//	"code.google.com/p/goprotobuf/proto"
+	"encoding/binary"
 	"fmt"
 	"libs/log"
 	"libs/ssdb"
 	"libs/token"
 	"strings"
 	"time"
-	"encoding/binary"
 	//requestLog "game/models/logs"
 	"encoding/json"
+	"models"
 	"protodata"
 )
 
 // 运行变量
 var (
-	FullStaminaNum  int = 20 // 满体力数值
+	online          int
 	gameToken       *token.Token
+	playerMap       map[int64]*Conn
 	request_log_map map[int32]string
 )
 
 func init() {
-
 	gameToken = token.NewToken(tokenAdapter{})
+	playerMap = make(map[int64]*Conn)
 	request_log_map = make(map[int32]string)
+	CountOnline()
+}
+
+func Handler(ws *websocket.Conn) {
+	// New Conn
+	conn := &Conn{
+		WsConn: ws,
+		Chan:   make(chan string, 10),
+	}
+
+	go conn.pushToClient()
+
+	online++
+	conn.PullFromClient()
+
+	online--
+
+	conn.WsConn.Close()
+}
+
+// get one handler
+func getHandler(index int32) func(int64, *protodata.CommandRequest) (string, error) {
+
+	// return func
+	if fun, ok := handlers[index]; ok {
+		return fun
+	}
+
+	// return 404 func
+	return func(uid int64, cq *protodata.CommandRequest) (string, error) {
+		err := fmt.Errorf("No handler map to command:%d", cq.GetCmdId())
+		return ReturnStr(cq, 999, ""), err
+	}
 }
 
 // Client Conn
@@ -34,42 +68,28 @@ type Conn struct {
 	WsConn     *websocket.Conn
 	onlineTime time.Time
 	lastTime   time.Time
-	//	Send   chan string
+	Chan       chan string
 }
 
 func (this *Conn) Send(s string) {
-
-	var buf = make([]byte, 4)
-	binary.LittleEndian.PutUint32(buf, uint32(len(s)))
-
-	Buffer := bytes.NewBuffer(buf)
-	Buffer.WriteString(s)
-
-	if err := websocket.Message.Send(this.WsConn, Buffer.Bytes()); err != nil {
-		log.Error("Can't send msg. %v", err)
-	} else {
-		log.Info("Send Success")
-	}
+	this.Chan <- s
 }
 
-// 发送信息回客户端
-//func (this *Conn) PushToClient() {
-//
-//	// range Send chan
-//	for s := range this.Send {
-//
-//		// response bytes 前4字节代表长度
-//		//		log.Debug("Send LEN: %d", len(s))
-//		buf := bytes.NewBuffer(common.IntToBytes(len(s)))
-//		buf.WriteString(s)
-//
-//		if err := websocket.Message.Send(this.WsConn, buf.Bytes()); err != nil {
-//			log.Error("Can't send msg. %v", err)
-//		} else {
-//			log.Info("Send Success")
-//		}
-//	}
-//}
+func (this *Conn) pushToClient() {
+	for s := range this.Chan {
+		var buf = make([]byte, 4)
+		binary.LittleEndian.PutUint32(buf, uint32(len(s)))
+
+		Buffer := bytes.NewBuffer(buf)
+		Buffer.WriteString(s)
+
+		if err := websocket.Message.Send(this.WsConn, Buffer.Bytes()); err != nil {
+			log.Error("Can't send msg. %v", err)
+		} else {
+			log.Info("Send Success")
+		}
+	}
+}
 
 // 从客户端读取信息
 func (this *Conn) PullFromClient() {
@@ -90,10 +110,6 @@ func (this *Conn) PullFromClient() {
 		}
 
 		this.lastTime = time.Now()
-		//		if int(this.lastTime.Sub(this.onlineTime).Seconds()) >= task.OnlineTimeInterval {
-		//			this.onlineTime = this.lastTime
-		//			task.OnlineAddNum(this.lastTime)
-		//		}
 
 		// **************** 其它接口 **************** //
 		if strings.HasPrefix(content, "20140709_allhero_") {
@@ -167,157 +183,32 @@ func (this *Conn) PullFromClient() {
 	}
 }
 
-//
-//// 验证玩家
-//func (this *Conn) getPlayer(cq *protodata.CommandRequest) (*Player, error) {
-//
-//	token := cq.GetTokenStr()
-//
-//	log.Info("Token : %s", token)
-//
-//	uniqueId, err := Token().GetUid(token)
-//	//	uniqueId, err := models.GetUnique(token)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	// token invalid or expires
-//	if uniqueId == 0 {
-//		log.Info("Token:%s invalid or Expired", token)
-//		return nil, fmt.Errorf(fmt.Sprintf("Token:%s invalid or Expired", token))
-//	}
-//
-//	return &Player{
-//		Uid:   uniqueId,
-//		Token:      token,
-//		Conn:     this.WsConn,
-//		ActiveTime: time.Now().Unix(),
-//	}, nil
-//}
-
-// 重写 Handler
-func Handler(ws *websocket.Conn) {
-
-	onlineTime := time.Now().Add(-time.Second * 5 * 60)
-	// New Conn
-	conn := &Conn{
-		WsConn:     ws,
-		onlineTime: onlineTime,
-		lastTime:   onlineTime,
-		//		Send:   make(chan string, 3),
-	}
-
-	// Handle Websocket Message
-	//	go conn.PushToClient()
-	conn.PullFromClient()
-
-	// kill resource
-	conn.WsConn.Close()
-	//	close(conn.Send)
-}
-
-// 10107 选择游戏服务器
-//func selectServer(cq *protodata.CommandRequest) (string, error) {
-//
-//	log.Info("Exec 10107 -> selectServer")
-//
-//	request := &protodata.SelectServerRequest{}
-//	err := proto.Unmarshal([]byte(cq.GetSerializedString()), request)
-//	if err != nil {
-//		return pd.ReturnStr(cq, protodata.StatusCode_DATA_ERROR, ""), err
-//	}
-//
-//	uid64, err := token.NewToken(token.GateWayTokenAdapter()).GetUid(request.GetGwTokenStr())
-//	uid := int(uid64)
-//
-//	// gwServer未登录
-//	if uid == 0 {
-//		return pd.ReturnStr(cq, protodata.StatusCode_INVALID_TOKEN,
-//			&protodata.SelectServerResponse{
-//				ECode: proto.Int32(2),
-//				EStr:  proto.String(common.ESTR_token_expired),
-//			}), nil
-//	}
-//
-//	// 判断是否存在角色
-//	userRole, err := models.GetRoleByUid(uid)
-//	if err != nil {
-//		return pd.ReturnStr(cq, protodata.StatusCode_DATABASE_ERROR, ""), err
-//	}
-//
-//	// 如果不存在则生成角色UniqueId
-//	var flag bool
-//	var lockFlag bool
-//	var uniqueId int64
-//	if userRole == nil {
-//
-//		uniqueId, err = strconv.ParseInt(fmt.Sprintf("%d%d", 100+ServerId, uid), 10, 64)
-//		if err != nil {
-//			panic(err)
-//		}
-//	} else {
-//		flag = true
-//		uniqueId = userRole.Unique
-//		if userRole.Status != 1 {
-//			lockFlag = true
-//		}
-//	}
-//
-//	// 账户未被锁定
-//	var serverToken string
-//	if !lockFlag {
-//
-//		serverToken, err = Token().AddToken(uniqueId)
-//		if err != nil {
-//			panic(err)
-//		}
-//
-//		// 设置最近登录服务器
-//		ssdb.SSDB().Set(fmt.Sprintf("uid:%d:recent", uid), strconv.Itoa(int(ServerId)))
-//	}
-//
-//	response := &protodata.SelectServerResponse{
-//		ECode:          proto.Int32(1),
-//		ServerTokenStr: proto.String(serverToken),
-//		RoleExistFlag:  proto.Bool(flag),
-//		RoleLockFlag:   proto.Bool(lockFlag),
-//	}
-//
-//	return pd.ReturnStr(cq, protodata.StatusCode_OK, response), nil
-//}
-
-// get one handler
-func getHandler(index int32) func(int64, *protodata.CommandRequest) (string, error) {
-
-	// return func
-	if fun, ok := handlers[index]; ok {
-		return fun
-	}
-
-	// return 404 func
-	return func(uid int64, cq *protodata.CommandRequest) (string, error) {
-		err := fmt.Errorf("No handler map to command:%d", cq.GetCmdId())
-		return ReturnStr(cq, 999, ""), err
-	}
-}
-
 func (this *Conn) OtherRequest(request []byte) {
 
 	data := make(map[string]string)
-
 	json.Unmarshal(request, &data)
 
-	if data["cmd"] == "8889" {
-		this.Send("")
+	if data["cmd"] == "9000" {
+		if OrderModel, err := models.NewOrderModel(data["orderId"]); err != nil {
+			log.Error("Pay Error %v", err)
+		} else {
+			OrderModel.Confirm()
+		}
 	}
+}
 
-	//	if data["cmd"] == "9000" {
-	//		if err := Pay.ConfirmOrder(data["orderId"]); err != nil {
-	//			log.Error("Pay Error %v", err)
-	//		}
-	//	} else if data["cmd"] == "9010" {
-	//		configs.ConfigRefreshGeneralReset()
-	//	}
+func CountOnline() {
+	go func() {
+		//	t := time.Tick(time.Second * 5)
+		t := time.Tick(time.Minute * 5)
+		for {
+			select {
+			case <-t:
+				//	fmt.Println("online num : ", online)
+				models.DB().Exec("INSERT INTO `stat_online`(`online_num`,`online_time`) VALUES (? , NOW())", online)
+			}
+		}
+	}()
 }
 
 type tokenAdapter struct {

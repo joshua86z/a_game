@@ -10,7 +10,7 @@ func getMailProto(mail *models.MailData) protodata.MailData {
 
 	var mailData protodata.MailData
 	mailData.MailId = proto.Int32(int32(mail.Id))
-	mailData.Mailtitle = proto.String(mail.Title)
+	mailData.MailTitle = proto.String(mail.Title)
 	mailData.MailContent = proto.String(mail.Content)
 	mailData.Reward = nil
 	mailData.IsReceive = proto.Bool(mail.IsReceive)

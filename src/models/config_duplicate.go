@@ -1,5 +1,12 @@
 package models
 
+import (
+	"fmt"
+	"libs/lua"
+	"strconv"
+	"strings"
+)
+
 var duplicate_config_list []*ConfigDuplicate
 
 func init() {
@@ -11,10 +18,10 @@ func init() {
 // config_duplicate
 type ConfigDuplicate struct {
 	ConfigId    int    `db:"duplicate_config_id"`
-	ChapterName string `db:"duplicate_chapter_name"`
-	SectionName string `db:"duplicate_section_name"`
 	Chapter     int    `db:"duplicate_chapter"`
 	Section     int    `db:"duplicate_section"`
+	ChapterName string `db:"duplicate_chapter_name"`
+	SectionName string `db:"duplicate_section_name"`
 	NPC         string `db:"duplicate_npc"`
 	Items       string `db:"duplicate_items"`
 	Generals    string `db:"duplicate_generals"`
@@ -23,5 +30,36 @@ type ConfigDuplicate struct {
 }
 
 func ConfigDuplicateList() []*ConfigDuplicate {
-	return duplicate_config_list
+
+	var result []*ConfigDuplicate
+
+	Lua, _ := lua.NewLua("conf/duplicate.lua")
+	i := 1
+	for {
+		duplicateStr := Lua.GetString(fmt.Sprintf("duplicate_%d", i))
+		if duplicateStr == "" {
+			break
+		} else {
+			i++
+		}
+		array := strings.Split(duplicateStr, "\\,")
+		chapter, _ := strconv.Atoi(array[0])
+		section, _ := strconv.Atoi(array[1])
+		result = append(result, &ConfigDuplicate{
+			ConfigId:    i,
+			Chapter:     chapter,
+			Section:     section,
+			ChapterName: array[2],
+			SectionName: array[3],
+			NPC:         array[4],
+			Items:       array[5],
+			Generals:    array[6],
+			ChapterDesc: array[7],
+			SectionDesc: array[8],
+		})
+	}
+
+	Lua.Close()
+
+	return result
 }

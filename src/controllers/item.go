@@ -6,6 +6,35 @@ import (
 	"protodata"
 )
 
+func ItemProtoList(itemList []*models.ItemData) []*protodata.ItemData {
+
+	var result []*protodata.ItemData
+	for _, config := range models.ConfigItemList() {
+
+		var itemData protodata.ItemData
+		itemData.ItemId = proto.Int32(int32(config.ConfigId))
+		itemData.ItemName = proto.String(config.Name)
+		itemData.ItemDesc = proto.String(config.Desc)
+		itemData.LevelUpCoin = proto.Int32(int32(levelUpCoin(1)))
+		itemData.Level = proto.Int32(1)
+
+		for _, item := range itemList {
+			if item.ConfigId == config.ConfigId {
+				itemData.Level = proto.Int32(int32(item.Level))
+				itemData.LevelUpCoin = proto.Int32(int32(levelUpCoin(item.Level)))
+				break
+			}
+		}
+
+		result = append(result, &itemData)
+	}
+	return result
+}
+
+func levelUpCoin(level int) int {
+	return level
+}
+
 func getItemProto(item *models.ItemData) protodata.ItemData {
 
 	config := models.ConfigItemMap()[item.Id]
