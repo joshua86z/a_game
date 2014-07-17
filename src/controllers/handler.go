@@ -252,6 +252,5 @@ func (this tokenAdapter) Get(key string) (string, error) {
 }
 
 func (this tokenAdapter) Delete(key string) error {
-
 	return ssdb.SSDB().Del(fmt.Sprintf("ALLHERO_%s", key))
 }
