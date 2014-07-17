@@ -10,36 +10,35 @@ import (
 type Mail struct {
 }
 
-func (this *Mail) List(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+func (this *Mail) List(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
 	var result []*protodata.MailData
-	for _, mail := range models.NewMailModel(uid).List() {
+	for _, mail := range models.NewMailModel(RoleModel.Uid).List() {
 		result = append(result, mailProto(mail))
 	}
 
-	return ReturnStr(commandRequest, protodata.StatusCode_OK, &protodata.MailResponse{Mails: result}), nil
+	return protodata.StatusCode_OK, &protodata.MailResponse{Mails: result}, nil
 }
 
-func (this *Mail) MailRewardRequest(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+func (this *Mail) MailRewardRequest(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
 	request := &protodata.MailRewardRequest{}
 	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-		return ReturnStr(commandRequest, 26, ""), err
+		return lineNum(), nil, err
 	}
 
-	mail := models.NewMailModel(uid).Mail(int(request.GetMailId()))
+	mail := models.NewMailModel(RoleModel.Uid).Mail(int(request.GetMailId()))
 	if mail == nil {
-		return ReturnStr(commandRequest, 32, "没有这条邮件"), fmt.Errorf("没有这条邮件")
+		return lineNum(), nil, fmt.Errorf("没有这条邮件")
 	}
 
 	models.DeleteMail(mail.Id)
 
 	var rewardPoto protodata.RewardData
 
-	RoleModel := models.NewRoleModel(uid)
 	if mail.ActionValue > 0 {
 		if err := RoleModel.SetActionValue(RoleModel.ActionValue() + mail.ActionValue); err != nil {
-			return ReturnStr(commandRequest, 46, "失败,数据库错误"), err
+			return lineNum(), nil, err
 		}
 	} else {
 		if mail.Coin > 0 {
@@ -55,7 +54,7 @@ func (this *Mail) MailRewardRequest(uid int64, commandRequest *protodata.Command
 	response := &protodata.MailRewardResponse{
 		Role:   roleProto(RoleModel),
 		Reward: &rewardPoto}
-	return ReturnStr(commandRequest, protodata.StatusCode_OK, response), nil
+	return protodata.StatusCode_OK, response, nil
 }
 
 func mailProto(mail *models.MailData) *protodata.MailData {

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"libs/log"
+	"models"
 	_ "models"
 	"protodata"
 	"reflect"
@@ -31,14 +32,14 @@ func init() {
 
 // handlers
 var (
-	handlers     map[int32]func(int64, *protodata.CommandRequest) (string, error)
+	handlers     map[int32]func(*models.RoleModel, *protodata.CommandRequest) (protodata.StatusCode, interface{}, error)
 	handlerNames map[int32]string
 )
 
 // get command handlers for set handlers
-func getHandlerMap() map[int32]func(int64, *protodata.CommandRequest) (string, error) {
+func getHandlerMap() map[int32]func(*models.RoleModel, *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
-	return map[int32]func(int64, *protodata.CommandRequest) (string, error){
+	return map[int32]func(*models.RoleModel, *protodata.CommandRequest) (protodata.StatusCode, interface{}, error){
 		10103: login.Login,
 		10104: role.UserDataRequest,
 		10105: role.SetRoleName,
@@ -54,4 +55,12 @@ func getHandlerMap() map[int32]func(int64, *protodata.CommandRequest) (string, e
 		//10115			//战斗初始化
 		//10116			//战斗结束
 	}
+}
+
+func lineNum() protodata.StatusCode {
+	_, _, line, ok := runtime.Caller(1)
+	if ok {
+		return protodata.StatusCode(line)
+	}
+	return -1
 }

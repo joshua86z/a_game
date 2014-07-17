@@ -10,18 +10,17 @@ import (
 type Item struct {
 }
 
-func (this *Item) LevelUp(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+func (this *Item) LevelUp(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
 	request := &protodata.ItemLevelUpRequest{}
 	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-		return ReturnStr(commandRequest, 17, ""), err
+		return lineNum(), nil, err
 	}
 
 	configId := int(request.GetItemId())
 
 	config := models.ConfigItemList()[configId-1]
-	ItemModel := models.NewItemModel(uid)
-	RoleModel := models.NewRoleModel(uid)
+	ItemModel := models.NewItemModel(RoleModel.Uid)
 
 	var coin, level int
 	item := ItemModel.Item(configId)
@@ -33,21 +32,21 @@ func (this *Item) LevelUp(uid int64, commandRequest *protodata.CommandRequest) (
 	coin = levelUpCoin(level)
 
 	if coin > RoleModel.Coin {
-		return ReturnStr(commandRequest, 36, "金币不足"), fmt.Errorf("金币不足")
+		return lineNum(), nil, fmt.Errorf("金币不足")
 	}
 
 	err := RoleModel.SubCoin(coin, models.ITEM_LEVELUP, fmt.Sprintf("item: %s , level: %d -> %d", config.Name, level, level+1))
 	if err != nil {
-		return ReturnStr(commandRequest, 41, "失败,数据库错误"), err
+		return lineNum(), nil, err
 	}
 
 	if item == nil {
 		if item = ItemModel.Insert(config); item == nil {
-			return ReturnStr(commandRequest, 46, "失败,数据库错误"), err
+			return lineNum(), nil, err
 		}
 	} else {
 		if err = item.LevelUp(); err != nil {
-			return ReturnStr(commandRequest, 50, "失败,数据库错误"), err
+			return lineNum(), nil, err
 		}
 	}
 
@@ -55,7 +54,7 @@ func (this *Item) LevelUp(uid int64, commandRequest *protodata.CommandRequest) (
 		Role: roleProto(RoleModel),
 		Item: itemProto(item, config),
 	}
-	return ReturnStr(commandRequest, protodata.StatusCode_OK, response), nil
+	return protodata.StatusCode_OK, response, nil
 }
 
 func itemProtoList(itemList []*models.ItemData) []*protodata.ItemData {

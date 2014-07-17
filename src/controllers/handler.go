@@ -50,7 +50,7 @@ func Handler(ws *websocket.Conn) {
 }
 
 // get one handler
-func getHandler(index int32) func(int64, *protodata.CommandRequest) (string, error) {
+func getHandler(index int32) func(*models.RoleModel, *protodata.CommandRequest) (protodata.StatusCode, interface {}, error) {
 
 	// return func
 	if fun, ok := handlers[index]; ok {
@@ -58,9 +58,9 @@ func getHandler(index int32) func(int64, *protodata.CommandRequest) (string, err
 	}
 
 	// return 404 func
-	return func(uid int64, cq *protodata.CommandRequest) (string, error) {
+	return func(RoleModel *models.RoleModel, cq *protodata.CommandRequest) (protodata.StatusCode, interface {}, error) {
 		err := fmt.Errorf("No handler map to command:%d", cq.GetCmdId())
-		return ReturnStr(cq, 999, ""), err
+		return 999, nil, err
 	}
 }
 
@@ -123,7 +123,7 @@ func (this *Conn) Close() {
 // 从客户端读取信息
 func (this *Conn) PullFromClient() {
 
-	var uid int64
+	var RoleModel *models.RoleModel
 	var index int32
 	for {
 
@@ -173,22 +173,30 @@ func (this *Conn) PullFromClient() {
 			// Check Login status
 			if request.GetTokenStr() == "" {
 				response = ReturnStr(request, protodata.StatusCode_INVALID_TOKEN, "")
+				return
 			}
-			uid, _ = gameToken.GetUid(request.GetTokenStr())
+			uid, _ := gameToken.GetUid(request.GetTokenStr())
 			if uid == 0 {
 				response = ReturnStr(request, protodata.StatusCode_INVALID_TOKEN, "")
+				return
 			} else {
 				this.InMap(uid)
+				if RoleModel == nil {
+					RoleModel = models.NewRoleModel(uid)
+				}
 			}
 		}
 
 		// Checking true
 		handler := getHandler(index)
-		log.Info("Exec %v -> %s (uid:%d)", index, handlerNames[index], uid)
+		log.Info("Exec %v -> %s (uid:%d)", index, handlerNames[index], RoleModel.Uid)
 
 		// 执行命令
-		if response, err = handler(uid, request); err != nil {
+		if code, value, err := handler(RoleModel, request); err != nil {
+			response = ReturnStr(request, code, fmt.Sprintf("%v", err))
 			log.Error("Exec command:%v error. %v", index, err)
+		} else {
+			response = ReturnStr(request, code, value)
 		}
 
 		execTime := time.Now().Sub(beginTime)
@@ -203,7 +211,7 @@ func (this *Conn) PullFromClient() {
 		this.Send(response)
 		//this.Send <-
 
-		if uid != 0 && index > 0 {
+		if RoleModel.Uid != 0 && index > 0 {
 			//玩家操作记录
 			if _, ok := request_log_map[index]; ok {
 				//				requestLog.InsertLog(player.UniqueId, index)

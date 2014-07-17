@@ -10,67 +10,65 @@ import (
 type General struct {
 }
 
-func (this *General) Buy(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+func (this *General) Buy(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
 	request := &protodata.BuyGeneralRequest{}
 	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-		return ReturnStr(commandRequest, 17, ""), err
+		return lineNum(), nil, err
 	}
 
 	configId := int(request.GetGeneralId())
 	config := models.ConfigGeneralById(configId)
 	needDiamond := config.BuyDiamond
 
-	GeneralModel := models.NewGeneralModel(uid)
+	GeneralModel := models.NewGeneralModel(RoleModel.Uid)
 	if GeneralModel.General(configId) != nil {
-		return ReturnStr(commandRequest, 26, "已有这个英雄,不能购买"), fmt.Errorf("已有这个英雄: %d", configId)
+		return lineNum(), nil, fmt.Errorf("已有这个英雄: %d", configId)
 	}
 
-	RoleModel := models.NewRoleModel(uid)
 	if needDiamond > RoleModel.Diamond {
-		return ReturnStr(commandRequest, 32, "钻石不足"), fmt.Errorf("钻石不足")
+		return lineNum(), nil, fmt.Errorf("钻石不足")
 	}
 
 	if err := RoleModel.SubDiamond(needDiamond, models.BUY_GENERAL, fmt.Sprintf("genId : %d", configId)); err != nil {
-		return ReturnStr(commandRequest, 35, "失败:数据库错误"), err
+		return lineNum(), nil, err
 	}
 
 	general := GeneralModel.Insert(config)
 	if general == nil {
-		return ReturnStr(commandRequest, 40, "失败:数据库错误"), fmt.Errorf("数据库英雄插入错误")
+		return lineNum(), nil, fmt.Errorf("失败:数据库错误")
 	}
 
 	response := &protodata.BuyGeneralResponse{
 		Role:    roleProto(RoleModel),
 		General: generalProto(general, config),
 	}
-	return ReturnStr(commandRequest, protodata.StatusCode_OK, response), nil
+	return protodata.StatusCode_OK, response, nil
 }
 
-func (this *General) LevelUp(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+func (this *General) LevelUp(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
 	request := &protodata.GeneralLevelUpRequest{}
 	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-		return ReturnStr(commandRequest, 14, ""), err
+		return lineNum(), nil, err
 	}
 	configId := int(request.GetGeneralId())
 
-	RoleModel := models.NewRoleModel(uid)
-	general := models.NewGeneralModel(uid).General(configId)
+	general := models.NewGeneralModel(RoleModel.Uid).General(configId)
 
 	config := models.ConfigGeneralById(general.ConfigId)
 
 	coin := levelUpCoin(general.Level)
 	if coin > RoleModel.Coin {
-		return ReturnStr(commandRequest, 21, "金币不足,无法升级"), fmt.Errorf("金币不足,无法升级")
+		return lineNum(), nil, fmt.Errorf("金币不足,无法升级")
 	}
 
 	if err := RoleModel.SubCoin(coin, models.GENERAL_LEVELUP, config.Name); err != nil {
-		return ReturnStr(commandRequest, 25, "扣除金币失败,数据库出错"), fmt.Errorf("扣除金币失败,数据库出错")
+		return lineNum(), nil, err
 	}
 
 	if err := general.LevelUp(config); err != nil {
-		return ReturnStr(commandRequest, 25, "升级失败,数据库出错"), fmt.Errorf("升级失败,数据库出错")
+		return lineNum(), nil, err
 	}
 
 	response := &protodata.GeneralLevelUpResponse{
@@ -78,7 +76,7 @@ func (this *General) LevelUp(uid int64, commandRequest *protodata.CommandRequest
 		General: generalProto(general, config),
 	}
 
-	return ReturnStr(commandRequest, protodata.StatusCode_OK, response), nil
+	return protodata.StatusCode_OK, response, nil
 }
 
 func generalProtoList(generalList []*models.GeneralData) []*protodata.GeneralData {

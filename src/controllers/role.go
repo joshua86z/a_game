@@ -13,19 +13,18 @@ import (
 type Role struct {
 }
 
-func (this *Role) UserDataRequest(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+func (this *Role) UserDataRequest(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
-	RoleModel := models.NewRoleModel(uid)
 	if RoleModel == nil {
 		RoleModel = &models.RoleModel{}
 		RoleModel.Coin = 0
 		RoleModel.Diamond = 0
 		if err := models.InsertRole(RoleModel); err != nil {
-			return ReturnStr(commandRequest, 26, "数据库错误"), err
+			return lineNum(), nil, err
 		}
 	}
 
-	SignModel := models.NewSignModel(uid)
+	SignModel := models.NewSignModel(RoleModel.Uid)
 	signDay := SignModel.Times % 7
 	if signDay == 0 {
 		signDay = 7
@@ -33,7 +32,7 @@ func (this *Role) UserDataRequest(uid int64, commandRequest *protodata.CommandRe
 	signProto := &protodata.SignRewardData{
 		Reward:    nil,
 		IsReceive: proto.Bool(true),
-//		IsReceive: proto.Bool(SignModel.Reward),
+		//		IsReceive: proto.Bool(SignModel.Reward),
 		SignDay: proto.Int32(int32(signDay)),
 	}
 
@@ -63,23 +62,23 @@ func (this *Role) UserDataRequest(uid int64, commandRequest *protodata.CommandRe
 
 	response := &protodata.UserDataResponse{
 		Role:             roleProto(RoleModel),
-		Items:            itemProtoList(models.NewItemModel(uid).List()),
-		Generals:         generalProtoList(models.NewGeneralModel(uid).List()),
+		Items:            itemProtoList(models.NewItemModel(RoleModel.Uid).List()),
+		Generals:         generalProtoList(models.NewGeneralModel(RoleModel.Uid).List()),
 		SignReward:       signProto,
-		Chapters:         getDuplicateProto(models.NewDuplicateModel(uid)),
+		Chapters:         getDuplicateProto(models.NewDuplicateModel(RoleModel.Uid)),
 		TempItemDiamonds: []int32{5, 5, 5, 5},
 		CoinProducts:     coinProductProtoList,
 		DiamondProducts:  productProtoList}
 
-	return ReturnStr(commandRequest, 1, response), nil
+	return protodata.StatusCode_OK, response, nil
 }
 
 // 随机生成角色名字
-func (role *Role) RandomName(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+func (role *Role) RandomName(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
 	L, err := lua.NewLua("conf/random_name.lua")
 	if err != nil {
-		return ReturnStr(commandRequest, 77, "配置文件出错"), err
+		return lineNum(), nil, err
 	}
 
 	firstNameStr := L.GetString("first_name")
@@ -97,19 +96,19 @@ func (role *Role) RandomName(uid int64, commandRequest *protodata.CommandRequest
 		Name: proto.String(firstName + secondName),
 	}
 
-	return ReturnStr(commandRequest, protodata.StatusCode_OK, response), nil
+	return protodata.StatusCode_OK, response, nil
 }
 
-func (role *Role) SetRoleName(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+func (role *Role) SetRoleName(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
 	request := &protodata.SetUpNameRequest{}
 	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-		return ReturnStr(commandRequest, 105, ""), err
+		return lineNum(), nil, err
 	}
 
 	name := request.GetName()
 	if name == "" {
-		return ReturnStr(commandRequest, 105, "名字不能为空"), fmt.Errorf("名字不能为空")
+		return lineNum(), nil, fmt.Errorf("名字不能为空")
 	}
 
 	rune := []rune(name)
@@ -120,24 +119,23 @@ func (role *Role) SetRoleName(uid int64, commandRequest *protodata.CommandReques
 
 	// 判断是否存在此用户名
 	if n := models.NumberByRoleName(name); n > 0 {
-		return ReturnStr(commandRequest, 118, "这个名字已被使用"), fmt.Errorf("这个名字已被使用")
+		return lineNum(), nil, fmt.Errorf("这个名字已被使用")
 	}
 
-	models.NewRoleModel(uid).SetName(name)
+	RoleModel.SetName(name)
 
-	return ReturnStr(commandRequest, protodata.StatusCode_OK, &protodata.SetUpNameResponse{}), nil
+	return protodata.StatusCode_OK, &protodata.SetUpNameResponse{}, nil
 }
 
-func (this *Role) BuyStaminaRequest(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+func (this *Role) BuyStaminaRequest(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
-	RoleModel := models.NewRoleModel(uid)
 	if RoleModel.ActionValue() >= models.MaxActionValue {
-		return ReturnStr(commandRequest, 128, "体力已满"), fmt.Errorf("体力已满")
+		return lineNum(), nil, fmt.Errorf("体力已满")
 	}
 
 	needDiamond := actionValueDiamond()
 	if RoleModel.Diamond < needDiamond {
-		return ReturnStr(commandRequest, 128, "钻石不足"), fmt.Errorf("钻石不足")
+		return lineNum(), nil, fmt.Errorf("钻石不足")
 	}
 
 	oldDiamond := RoleModel.Diamond
@@ -145,12 +143,12 @@ func (this *Role) BuyStaminaRequest(uid int64, commandRequest *protodata.Command
 	RoleModel.Diamond -= needDiamond
 	err := RoleModel.SetActionValue(models.MaxActionValue)
 	if err != nil {
-		return ReturnStr(commandRequest, 128, "失败,数据库出错"), err
+		return lineNum(), nil, err
 	} else {
-		models.InsertSubDiamondFinanceLog(uid, models.BUY_ACTION, oldDiamond, RoleModel.Diamond, fmt.Sprintf("%d -> %d", oldAction, models.MaxActionValue))
+		models.InsertSubDiamondFinanceLog(RoleModel.Uid, models.BUY_ACTION, oldDiamond, RoleModel.Diamond, fmt.Sprintf("%d -> %d", oldAction, models.MaxActionValue))
 	}
 
-	return ReturnStr(commandRequest, protodata.StatusCode_OK, &protodata.BuyStaminaResponse{}), nil
+	return protodata.StatusCode_OK, &protodata.BuyStaminaResponse{}, nil
 }
 
 func roleProto(RoleModel *models.RoleModel) *protodata.RoleData {

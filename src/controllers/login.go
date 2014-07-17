@@ -12,11 +12,11 @@ import (
 type Login struct {
 }
 
-func (this *Login) Login(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+func (this *Login) Login(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
 
 	request := &protodata.LoginRequest{}
 	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-		return ReturnStr(commandRequest, 19, ""), fmt.Errorf("%v", err)
+		return lineNum(), nil, err
 	}
 
 	username := request.GetUsername()
@@ -31,21 +31,21 @@ func (this *Login) Login(uid int64, commandRequest *protodata.CommandRequest) (s
 		UserModel.OtherId = otherId
 		UserModel.PlatId = platId
 		if err := UserModel.Insert(); err != nil {
-			return ReturnStr(commandRequest, 34, ""), err
+			return lineNum(), nil, err
 		}
 	}
 
-	uid = UserModel.Uid
+	uid := UserModel.Uid
 	token, err := gameToken.AddToken(uid)
 	if err != nil {
-		return ReturnStr(commandRequest, 41, ""), fmt.Errorf("%v", err)
+		return lineNum(), nil, err
 	}
 
-	models.NewRoleModel(uid)
+	RoleModel = models.NewRoleModel(uid)
 	models.NewSignModel(uid)
 
 	response := &protodata.LoginResponse{TokenStr: proto.String(token)}
-	return ReturnStr(commandRequest, 1, response), nil
+	return protodata.StatusCode_OK, response, nil
 }
 
 func otherLogin(platId int, otherId string, session string, sign string, otherData string) (string, bool) {
