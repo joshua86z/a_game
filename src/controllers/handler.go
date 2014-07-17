@@ -35,50 +35,10 @@ func init() {
 
 // Client Connect
 type Connect struct {
-	Role *models.RoleModel
-	Websocket *websocket.Connect
-	Request   *protodata.CommectRequest
-	Chan      chan string
-}
-
-func Handler(ws *websocket.Connect) {
-
-	online++
-	// New Connectect
-	Connect := &Connect{
-		Websocket: ws,
-		Chan:      make(chan string, 10),
-	}
-
-	Connect.pushToClient()
-	Connect.PullFromClient()
-	Connect.Close()
-
-	online--
-}
-
-// get one handler
-func getHandler(index int32) func() {
-
-	// return func
-	if fun, ok := handlers[index]; ok {
-		return fun
-	}
-
-	// return 404 func
-	return func() {
-	}
-}
-
-func SendMessage(uid int64, message string) error {
-	playLock.Lock()
-	if Connect, ok := playerMap[uid]; !ok {
-		return fmt.Errorf("uid : %d not online", uid)
-	} else {
-		Connect.Send(message)
-	}
-	playLock.Unlock()
-	return nil
+	Role    *models.RoleModel
+	Conn    *websocket.Connect
+	Chan    chan string
+	Request *protodata.CommectRequest
 }
 
 func (this *Connect) Send(code protodata.StatusCode, value interface{}, err error) {
@@ -102,7 +62,7 @@ func (this *Connect) pushToClient() {
 			Buffer := bytes.NewBuffer(buf)
 			Buffer.WriteString(s)
 
-			if err := websocket.Message.Send(this.Websocket, Buffer.Bytes()); err != nil {
+			if err := websocket.Message.Send(this.Conn, Buffer.Bytes()); err != nil {
 				log.Warn("Can't send msg. %v", err)
 			} else {
 				log.Info("Send Success")
@@ -123,19 +83,18 @@ func (this *Connect) Close() {
 	playLock.Lock()
 	delete(playerMap, this.Role.Uid)
 	playLock.Unlock()
-	this.Websocket.Close()
+	this.Conn.Close()
 }
 
 // 从客户端读取信息
 func (this *Connect) PullFromClient() {
 
 	for {
-
 		// receive from ws Connect
 		var content string
-		if err := websocket.Message.Receive(this.Websocket, &content); err != nil {
+		if err := websocket.Message.Receive(this.Conn, &content); err != nil {
 			if err.Error() == "EOF" {
-				log.Info("Websocket receive EOF")
+				log.Info("Conn receive EOF")
 			} else {
 				log.Error("Can't receive message. %v", err)
 			}
@@ -154,14 +113,15 @@ func (this *Connect) PullFromClient() {
 		log.Info(" Begin ")
 
 		// parse proto message
-		request, err := ParseContent(content)
-		if err != nil {
+
+		if request, err := ParseContent(content); err != nil {
 			log.Error("Parse client request error. %v", err)
 			this.send(ReturnStr(request, 9998, fmt.Sprintf("客户端错误:%v", err)))
 			continue
+		} else {
+			this.Request = request
 		}
 
-		this.Request = request
 		index := request.GetCmdId()
 
 		// Panic recover
@@ -175,26 +135,31 @@ func (this *Connect) PullFromClient() {
 		if index != 10000 {
 			// Check Login status
 			if request.GetTokenStr() == "" {
-				this.Send(protodata.StatusCode_INVALID_TOKEN, nil, "")
+				this.Send(protodata.StatusCode_INVALID_TOKEN, nil, nil)
 				continue
 			}
 			uid, _ := gameToken.GetUid(request.GetTokenStr())
 			if uid == 0 {
-				this.Send(protodata.StatusCode_INVALID_TOKEN, nil, "")
+				this.Send(protodata.StatusCode_INVALID_TOKEN, nil, nil)
 				continue
 			} else {
 				if this.Role == nil {
 					this.Role = models.NewRoleModel(uid)
 				} else if this.Role.Uid != uid {
-					this.Send(protodata.StatusCode_INVALID_TOKEN, nil, "")
+					this.Send(protodata.StatusCode_INVALID_TOKEN, nil, nil)
 					continue
 				}
 			}
 		}
 
 		// 执行命令
-		getHandler(index)()
 		log.Info("Exec %v -> %s (uid:%d)", index, handlerNames[index], RoleModel.Uid)
+		if function, ok := handlers[index]; ok {
+			function()
+		} else {
+			this.Send(9997, nil, fmt.Errorf("没有这方法 index : %d", index))
+			continue
+		}
 
 		// 执行命令
 		//handler()
@@ -232,6 +197,33 @@ func (this *Connect) OtherRequest(request []byte) {
 			OrderModel.Confirm()
 		}
 	}
+}
+
+func Handler(ws *websocket.Connect) {
+
+	online++
+	// New Connectect
+	Connect := &Connect{
+		Conn: ws,
+		Chan: make(chan string, 10),
+	}
+
+	Connect.pushToClient()
+	Connect.PullFromClient()
+	Connect.Close()
+
+	online--
+}
+
+func SendMessage(uid int64, message string) error {
+	playLock.Lock()
+	if Connect, ok := playerMap[uid]; !ok {
+		return fmt.Errorf("uid : %d not online", uid)
+	} else {
+		Connect.Send(message)
+	}
+	playLock.Unlock()
+	return nil
 }
 
 func CountOnline() {
