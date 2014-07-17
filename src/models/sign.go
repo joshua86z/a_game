@@ -20,13 +20,15 @@ func init() {
 
 func NewSignModel(uid int64) *SignModel {
 
+	now := time.Now()
+
 	SignModel := &SignModel{}
 	if err := DB().SelectOne(SignModel, "SELECT * FROM role_sign WHERE uid = ? ", uid); err != nil {
 		if err != sql.ErrNoRows {
 			DBError(err)
 		}
 		SignModel.Uid = uid
-		SignModel.Date = time.Now().Format("20060102")
+		SignModel.Date = now.Format("20060102")
 		SignModel.Times = 1
 		SignModel.Reward = false
 		err = DB().Insert(SignModel)
@@ -36,26 +38,21 @@ func NewSignModel(uid int64) *SignModel {
 		return NewSignModel(uid)
 	}
 
+	if SignModel.Date == now.Format("20060102") {
+		return SignModel
+	} else if SignModel.Date == now.AddDate(0, 0, -1).Format("20060102") {
+		SignModel.Times++
+	} else {
+		SignModel.Times = 1
+	}
+
+	SignModel.Date = now.Format("20060102")
+	SignModel.Reward = false
+
+	if _, err := DB().Update(SignModel);err != nil {
+		DBError(err)
+	}
 	return SignModel
-}
-
-//
-func (this *SignModel) Sign() error {
-	now := time.Now()
-	if this.Date == now.Format("20060102") {
-		return nil
-	}
-	if this.Date == now.AddDate(0, 0, -1).Format("20060102") {
-		this.Date = now.Format("20060102")
-		if this.Reward {
-			this.Times = 1
-		} else {
-			this.Times += 1
-		}
-	}
-
-	_, err := DB().Update(this)
-	return err
 }
 
 func (this *SignModel) GetReward() error {

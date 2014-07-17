@@ -2,20 +2,23 @@ package controllers
 
 import (
 	"libs/log"
+	_ "models"
 	"protodata"
 	"reflect"
 	"runtime"
-	_ "models"
 )
 
 // 游戏主逻辑
 var (
-	login *Login
+	login   *Login
+	role    *Role
+	general *General
+	item    *Item
+	pay     *Pay
+	mail    *Mail
 )
 
 func init() {
-
-	login = &Login{}
 
 	handlers = getHandlerMap()
 	handlerNames = make(map[int32]string)
@@ -36,6 +39,19 @@ var (
 func getHandlerMap() map[int32]func(int64, *protodata.CommandRequest) (string, error) {
 
 	return map[int32]func(int64, *protodata.CommandRequest) (string, error){
-		10000: login.Login,
+		10103: login.Login,
+		10104: role.UserDataRequest,
+		10105: role.SetRoleName,
+		10106: role.RandomName,
+		10107: role.BuyStaminaRequest,
+		10108: pay.BuyCoinRequest,
+		//10109			//补充钻石
+		10110: general.LevelUp,
+		10111: general.Buy,
+		10112: mail.List,
+		10113: mail.MailRewardRequest,
+		10114: item.LevelUp,
+		//10115			//战斗初始化
+		//10116			//战斗结束
 	}
 }

@@ -28,7 +28,7 @@ func NewItemModel(uid int64) *ItemModel {
 	var Item ItemModel
 
 	var temp []*ItemData
-	_, err := DB().Select(&temp, "SELECT * FROM role_items WHERE uid = ?  ", uid)
+	_, err := DB().Select(&temp, "SELECT * FROM role_items WHERE uid = ? ", uid)
 	if err != nil {
 		DBError(err)
 	}
@@ -43,9 +43,9 @@ func (this *ItemModel) List() []*ItemData {
 	return this.ItemList
 }
 
-func (this *ItemModel) Item(itemId int) *ItemData {
+func (this *ItemModel) Item(configId int) *ItemData {
 	for _, item := range this.ItemList {
-		if item.Id == itemId {
+		if item.ConfigId == configId {
 			return item
 		}
 	}
@@ -65,10 +65,10 @@ func (this *ItemData) LevelUpCoin() int {
 	return this.Level * 10
 }
 
-func InsertItem(uid int64, config *ConfigItem) *ItemData {
+func (this *ItemModel) Insert(config *ConfigItem) *ItemData {
 
 	item := &ItemData{}
-	item.Uid = uid
+	item.Uid = this.Uid
 	item.ConfigId = config.ConfigId
 	item.Name = config.Name
 	item.Level = 1

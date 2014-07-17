@@ -61,15 +61,22 @@ func NumberByRoleName(name string) int64 {
 	return n
 }
 
-var (
-	MaxActionValue int64 = 5
-	ActionWaitTime int64 = 1800
+const (
+	MaxActionValue int = 5
+	ActionWaitTime int = 1800
 )
+
+func (this *RoleModel) SetName(name string) error {
+	this.Name = name
+	this.UnixTime = time.Now().Unix()
+	_, err := DB().Update(this)
+	return err
+}
 
 func (this *RoleModel) ActionValue() int {
 
 	now := time.Now()
-	n := (now.Unix() - this.ActionTime) / ActionWaitTime
+	n := (int(now.Unix() - this.ActionTime)) / ActionWaitTime
 	if n > MaxActionValue {
 		n = MaxActionValue
 	}
@@ -79,14 +86,14 @@ func (this *RoleModel) ActionValue() int {
 
 func (this *RoleModel) SetActionValue(n int) error {
 
-	if n > int(MaxActionValue) {
-		this.OtherAction = n - int(MaxActionValue)
-		n = int(MaxActionValue)
+	if n > MaxActionValue {
+		this.OtherAction = n - MaxActionValue
+		n = MaxActionValue
 	}
 
 	nowUnix := time.Now().Unix()
-	remainder := (nowUnix - this.ActionTime) % ActionWaitTime
-	this.ActionTime = nowUnix - remainder - ActionWaitTime*int64(n)
+	remainder := int(nowUnix-this.ActionTime) % ActionWaitTime
+	this.ActionTime = nowUnix - int64(remainder) - int64(ActionWaitTime*n)
 	this.UnixTime = nowUnix
 
 	_, err := DB().Update(this)
@@ -96,9 +103,9 @@ func (this *RoleModel) SetActionValue(n int) error {
 func (this *RoleModel) ActionRecoverTime() int {
 
 	nowUnix := time.Now().Unix()
-	remainder := (nowUnix - this.ActionTime) % ActionWaitTime
+	remainder := int(nowUnix-this.ActionTime) % ActionWaitTime
 
-	return int(ActionWaitTime - remainder)
+	return ActionWaitTime - remainder
 }
 
 func (this *RoleModel) AddCoin(n int, finance_type FinanceType, desc string) error {

@@ -7,13 +7,13 @@ import (
 	"strings"
 )
 
-var duplicate_config_list []*ConfigDuplicate
-
-func init() {
-	if _, err := DB().Select(&duplicate_config_list, "SELECT * FROM config_duplicate ORDER BY duplicate_config_id ASC "); err != nil {
-		panic(err)
-	}
-}
+//var duplicate_config_list []*ConfigDuplicate
+//
+//func init() {
+//	if _, err := DB().Select(&duplicate_config_list, "SELECT * FROM config_duplicate ORDER BY duplicate_config_id ASC "); err != nil {
+//		panic(err)
+//	}
+//}
 
 // config_duplicate
 type ConfigDuplicate struct {
@@ -34,13 +34,12 @@ func ConfigDuplicateList() []*ConfigDuplicate {
 	var result []*ConfigDuplicate
 
 	Lua, _ := lua.NewLua("conf/duplicate.lua")
-	i := 1
+	var i int
 	for {
+		i++
 		duplicateStr := Lua.GetString(fmt.Sprintf("duplicate_%d", i))
 		if duplicateStr == "" {
 			break
-		} else {
-			i++
 		}
 		array := strings.Split(duplicateStr, "\\,")
 		chapter, _ := strconv.Atoi(array[0])

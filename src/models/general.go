@@ -17,6 +17,7 @@ type GeneralData struct {
 	Speed    int    `db:"general_speed"`
 	Dex      int    `db:"general_dex"`
 	Range    int    `db:"general_range"`
+	KillNum  int    `db:"general_kill_num"`
 	UnixTime int64  `db:"general_time"`
 }
 
@@ -58,25 +59,10 @@ func (this *GeneralModel) General(configId int) *GeneralData {
 	return nil
 }
 
-func (this *GeneralData) LevelUp(config *ConfigGeneral) error {
-
-	this.Level += 1
-	this.Atk += config.AtkGroup
-	this.Def += config.DefGroup
-	this.Hp += config.HpGroup
-	this.Speed += config.SpeedGroup
-	this.Dex += config.DexGroup
-	this.Range += config.RangeGroup
-	this.UnixTime = time.Now().Unix()
-
-	_, err := DB().Update(this)
-	return err
-}
-
-func InsertGeneral(uid int64, config *ConfigGeneral) *GeneralData {
+func (this *GeneralModel) Insert(config *ConfigGeneral) *GeneralData {
 
 	general := &GeneralData{}
-	general.Uid = uid
+	general.Uid = this.Uid
 	general.ConfigId = config.ConfigId
 	general.Name = config.Name
 	general.Level = 1
@@ -90,7 +76,24 @@ func InsertGeneral(uid int64, config *ConfigGeneral) *GeneralData {
 
 	if err := DB().Insert(general); err != nil {
 		return nil
+	} else {
+		this.GeneralList = append(this.GeneralList, general)
 	}
 
 	return general
+}
+
+func (this *GeneralData) LevelUp(config *ConfigGeneral) error {
+
+	this.Level += 1
+	this.Atk += config.AtkGroup
+	this.Def += config.DefGroup
+	this.Hp += config.HpGroup
+	this.Speed += config.SpeedGroup
+	this.Dex += config.DexGroup
+	this.Range += config.RangeGroup
+	this.UnixTime = time.Now().Unix()
+
+	_, err := DB().Update(this)
+	return err
 }

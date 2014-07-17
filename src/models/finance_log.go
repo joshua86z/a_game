@@ -13,11 +13,13 @@ type FinanceType int
 
 const (
 	_ FinanceType = iota
-	A
-	B
-	C
-	D
-	E
+	BUY_DIAMOND
+	BUY_ACTION
+	BUY_GENERAL
+	BUY_COIN
+	ITEM_LEVELUP
+	GENERAL_LEVELUP
+	MAIL_GET
 )
 
 type finance struct {
@@ -43,7 +45,14 @@ func init() {
 	go checkfinanceChan()
 
 	financeStrMap = make(map[FinanceType]string)
-	financeStrMap[A] = "充值"
+	financeStrMap[BUY_DIAMOND] = "充值"
+	financeStrMap[BUY_ACTION] = "买体力"
+	financeStrMap[BUY_GENERAL] = "买英雄"
+	financeStrMap[BUY_COIN] = "兑换金币"
+	financeStrMap[ITEM_LEVELUP] = "道具升级"
+	financeStrMap[GENERAL_LEVELUP] = "英雄升级"
+	financeStrMap[MAIL_GET] = "邮件领取"
+
 }
 
 func checkfinanceChan() {

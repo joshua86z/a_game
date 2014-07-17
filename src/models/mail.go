@@ -1,19 +1,20 @@
 package models
 
 import (
-	"fmt"
 	"time"
 )
 
 // role_mail
 type MailData struct {
-	Id        int    `db:"mail_id"`
-	Uid       int64  `db:"uid"`
-	Title     string `db:"mail_title"`
-	Content   string `db:"mail_content"`
-	Reward    string `db:"mail_reward"`
-	IsReceive bool   `db:"mail_is_receive"`
-	UnixTime  int64  `db:"mail_time"`
+	Id          int    `db:"mail_id"`
+	Uid         int64  `db:"uid"`
+	Title       string `db:"mail_title"`
+	Content     string `db:"mail_content"`
+	ActionValue int    `db:"mail_action_value"`
+	Coin        int    `db:"mail_coin"`
+	Diamond     int    `db:"mail_diamond"`
+	IsReceive   bool   `db:"mail_is_receive"`
+	UnixTime    int64  `db:"mail_time"`
 }
 
 func init() {
@@ -45,13 +46,13 @@ func (this *MailModel) List() []*MailData {
 	return this.MailList
 }
 
-func (this *MailModel) GetMail(mailId int) *MailData {
+func (this *MailModel) Mail(mailId int) *MailData {
 	for _, mail := range this.MailList {
 		if mail.Id == mailId {
 			return mail
 		}
 	}
-	panic(fmt.Sprintf("没有这条数据 %d", mailId))
+	return nil
 }
 
 func InsertMail(mail *MailData) *MailData {

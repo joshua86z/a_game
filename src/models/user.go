@@ -37,7 +37,7 @@ func GetUserByName(name string) *UserModel {
 	str := "SELECT * FROM " + UserModel.tableName() + " WHERE username = ? LIMIT 1"
 	if err := DB().SelectOne(UserModel, str, name); err != nil {
 		if err == sql.ErrNoRows {
-			return UserModel
+			return nil
 		} else {
 			panic(err)
 		}

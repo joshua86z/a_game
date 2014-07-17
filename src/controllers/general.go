@@ -7,9 +7,53 @@ import (
 	"protodata"
 )
 
-func LevelUp(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+type General struct {
+}
 
-	var configId int = 1
+func (this *General) Buy(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+
+	request := &protodata.BuyGeneralRequest{}
+	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
+		return ReturnStr(commandRequest, 17, ""), err
+	}
+
+	configId := int(request.GetGeneralId())
+	config := models.ConfigGeneralById(configId)
+	needDiamond := config.BuyDiamond
+
+	GeneralModel := models.NewGeneralModel(uid)
+	if GeneralModel.General(configId) != nil {
+		return ReturnStr(commandRequest, 26, "已有这个英雄,不能购买"), fmt.Errorf("已有这个英雄: %d", configId)
+	}
+
+	RoleModel := models.NewRoleModel(uid)
+	if needDiamond > RoleModel.Diamond {
+		return ReturnStr(commandRequest, 32, "钻石不足"), fmt.Errorf("钻石不足")
+	}
+
+	if err := RoleModel.SubDiamond(needDiamond, models.BUY_GENERAL, fmt.Sprintf("genId : %d", configId)); err != nil {
+		return ReturnStr(commandRequest, 35, "失败:数据库错误"), err
+	}
+
+	general := GeneralModel.Insert(config)
+	if general == nil {
+		return ReturnStr(commandRequest, 40, "失败:数据库错误"), fmt.Errorf("数据库英雄插入错误")
+	}
+
+	response := &protodata.BuyGeneralResponse{
+		Role:    roleProto(RoleModel),
+		General: generalProto(general, config),
+	}
+	return ReturnStr(commandRequest, protodata.StatusCode_OK, response), nil
+}
+
+func (this *General) LevelUp(uid int64, commandRequest *protodata.CommandRequest) (string, error) {
+
+	request := &protodata.GeneralLevelUpRequest{}
+	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
+		return ReturnStr(commandRequest, 14, ""), err
+	}
+	configId := int(request.GetGeneralId())
 
 	RoleModel := models.NewRoleModel(uid)
 	general := models.NewGeneralModel(uid).General(configId)
@@ -21,7 +65,7 @@ func LevelUp(uid int64, commandRequest *protodata.CommandRequest) (string, error
 		return ReturnStr(commandRequest, 21, "金币不足,无法升级"), fmt.Errorf("金币不足,无法升级")
 	}
 
-	if err := RoleModel.SubCoin(coin, models.A, config.Name); err != nil {
+	if err := RoleModel.SubCoin(coin, models.GENERAL_LEVELUP, config.Name); err != nil {
 		return ReturnStr(commandRequest, 25, "扣除金币失败,数据库出错"), fmt.Errorf("扣除金币失败,数据库出错")
 	}
 
@@ -29,9 +73,12 @@ func LevelUp(uid int64, commandRequest *protodata.CommandRequest) (string, error
 		return ReturnStr(commandRequest, 25, "升级失败,数据库出错"), fmt.Errorf("升级失败,数据库出错")
 	}
 
-	generalProto := generalProto(general, config)
+	response := &protodata.GeneralLevelUpResponse{
+		Role:    roleProto(RoleModel),
+		General: generalProto(general, config),
+	}
 
-	return ReturnStr(commandRequest, 1, generalProto), nil
+	return ReturnStr(commandRequest, protodata.StatusCode_OK, response), nil
 }
 
 func generalProtoList(generalList []*models.GeneralData) []*protodata.GeneralData {
@@ -47,6 +94,7 @@ func generalProtoList(generalList []*models.GeneralData) []*protodata.GeneralDat
 		generalData.GeneralDesc = proto.String(config.Desc)
 		generalData.AtkR = proto.Int32(int32(config.AtkRange))
 		generalData.GeneralType = proto.Int32(int32(config.Type))
+		generalData.BuyDiamond = proto.Int32(int32(config.BuyDiamond))
 
 		var find bool
 		for _, general := range generalList {
@@ -60,7 +108,7 @@ func generalProtoList(generalList []*models.GeneralData) []*protodata.GeneralDat
 				generalData.TriggerR = proto.Int32(int32(general.Range))
 				generalData.LevelUpCoin = proto.Int32(int32(generallevelUpCoin(general.Level)))
 				generalData.IsUnlock = proto.Bool(true)
-				generalData.KillNum = proto.Int32(int32(general.Speed))
+				generalData.KillNum = proto.Int32(int32(general.KillNum))
 
 				find = true
 			}
@@ -103,6 +151,8 @@ func generalProto(general *models.GeneralData, config *models.ConfigGeneral) *pr
 	generalData.AtkR = proto.Int32(int32(config.AtkRange))
 	generalData.GeneralType = proto.Int32(int32(config.Type))
 	generalData.LevelUpCoin = proto.Int32(int32(general.Level))
+	generalData.BuyDiamond = proto.Int32(int32(config.BuyDiamond))
+	generalData.KillNum = proto.Int32(int32(general.KillNum))
 	generalData.IsUnlock = proto.Bool(true)
 	return &generalData
 }

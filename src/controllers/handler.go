@@ -14,12 +14,14 @@ import (
 	"encoding/json"
 	"models"
 	"protodata"
+	"sync"
 )
 
 // 运行变量
 var (
 	online          int
 	gameToken       *token.Token
+	playLock        sync.Mutex
 	playerMap       map[int64]*Conn
 	request_log_map map[int32]string
 )
@@ -32,20 +34,19 @@ func init() {
 }
 
 func Handler(ws *websocket.Conn) {
-	// New Conn
+
+	online++
+	// New Connect
 	conn := &Conn{
 		WsConn: ws,
 		Chan:   make(chan string, 10),
 	}
 
-	go conn.pushToClient()
-
-	online++
+	conn.pushToClient()
 	conn.PullFromClient()
+	conn.Close()
 
 	online--
-
-	conn.WsConn.Close()
 }
 
 // get one handler
@@ -63,12 +64,22 @@ func getHandler(index int32) func(int64, *protodata.CommandRequest) (string, err
 	}
 }
 
+func SendMessage(uid int64, message string) error {
+	playLock.Lock()
+	if conn, ok := playerMap[uid]; !ok {
+		return fmt.Errorf("uid : %d not online", uid)
+	} else {
+		conn.Send(message)
+	}
+	playLock.Unlock()
+	return nil
+}
+
 // Client Conn
 type Conn struct {
-	WsConn     *websocket.Conn
-	onlineTime time.Time
-	lastTime   time.Time
-	Chan       chan string
+	Uid    int64
+	WsConn *websocket.Conn
+	Chan   chan string
 }
 
 func (this *Conn) Send(s string) {
@@ -76,19 +87,37 @@ func (this *Conn) Send(s string) {
 }
 
 func (this *Conn) pushToClient() {
-	for s := range this.Chan {
-		var buf = make([]byte, 4)
-		binary.LittleEndian.PutUint32(buf, uint32(len(s)))
+	go func() {
+		for s := range this.Chan {
+			var buf = make([]byte, 4)
+			binary.LittleEndian.PutUint32(buf, uint32(len(s)))
 
-		Buffer := bytes.NewBuffer(buf)
-		Buffer.WriteString(s)
+			Buffer := bytes.NewBuffer(buf)
+			Buffer.WriteString(s)
 
-		if err := websocket.Message.Send(this.WsConn, Buffer.Bytes()); err != nil {
-			log.Error("Can't send msg. %v", err)
-		} else {
-			log.Info("Send Success")
+			if err := websocket.Message.Send(this.WsConn, Buffer.Bytes()); err != nil {
+				log.Warn("Can't send msg. %v", err)
+			} else {
+				log.Info("Send Success")
+			}
 		}
+	}()
+}
+
+func (this *Conn) InMap(uid int64) {
+	this.Uid = uid
+	playLock.Lock()
+	if _, ok := playerMap[uid]; !ok {
+		playerMap[uid] = this
 	}
+	playLock.Unlock()
+}
+
+func (this *Conn) Close() {
+	playLock.Lock()
+	delete(playerMap, this.Uid)
+	playLock.Unlock()
+	this.WsConn.Close()
 }
 
 // 从客户端读取信息
@@ -108,8 +137,6 @@ func (this *Conn) PullFromClient() {
 			}
 			return
 		}
-
-		this.lastTime = time.Now()
 
 		// **************** 其它接口 **************** //
 		if strings.HasPrefix(content, "20140709_allhero_") {
@@ -150,6 +177,8 @@ func (this *Conn) PullFromClient() {
 			uid, _ = gameToken.GetUid(request.GetTokenStr())
 			if uid == 0 {
 				response = ReturnStr(request, protodata.StatusCode_INVALID_TOKEN, "")
+			} else {
+				this.InMap(uid)
 			}
 		}
 
