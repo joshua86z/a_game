@@ -16,14 +16,15 @@ import (
 // Client Connect
 type Connect struct {
 	Role    *models.RoleModel
-	Conn    *websocket.Connect
+	Conn    *websocket.Conn
 	Chan    chan string
-	Request *protodata.CommectRequest
+	Request *protodata.CommandRequest
 }
 
-func (this *Connect) Send(code protodata.StatusCode, value interface{}) {
+func (this *Connect) Send(code protodata.StatusCode, value interface{}) error {
 	this.Chan <- ReturnStr(this.Request, code, value)
 	this.Request = nil
+	return nil
 }
 
 func (this *Connect) pushToClient() {
@@ -85,7 +86,8 @@ func (this *Connect) PullFromClient() {
 
 		// **************** 其它接口 **************** //
 		if strings.HasPrefix(content, "20140709_allhero_") {
-			return this.OtherRequest([]byte(strings.Replace(content, "20140709_allhero_", "", len(content))))
+			this.OtherRequest([]byte(strings.Replace(content, "20140709_allhero_", "", len(content))))
+			return
 		}
 		// **************** 支付专用 **************** //
 
@@ -101,13 +103,13 @@ func (this *Connect) PullFromClient() {
 			continue
 		}
 
-		if request.GetCmdId() != 10000 {
+		if this.Request.GetCmdId() != 10000 {
 			// Check Login status
-			if request.GetTokenStr() == "" {
+			if this.Request.GetTokenStr() == "" {
 				this.Send(protodata.StatusCode_INVALID_TOKEN, nil)
 				continue
 			}
-			uid, _ := gameToken.GetUid(request.GetTokenStr())
+			uid, _ := gameToken.GetUid(this.Request.GetTokenStr())
 			if uid == 0 {
 				this.Send(protodata.StatusCode_INVALID_TOKEN, nil)
 				continue
@@ -122,32 +124,27 @@ func (this *Connect) PullFromClient() {
 		}
 
 		// 执行命令
-		function := this.Function()
-		function()
-		log.Info("Exec -> %v (uid:%d)", function, RoleModel.Uid)
+		this.Function(this.Request.GetCmdId())()
+		log.Info("Exec -> %d (uid:%d)", this.Request.GetCmdId(), this.Role.Uid)
 
 		execTime := time.Now().Sub(beginTime)
 		if execTime.Seconds() > 0.1 {
 			//慢日志
-			log.Warn("Slow Exec -> %v, time is %v second", function, execTime.Seconds())
+			log.Warn("Slow Exec -> %d, time is %v second", this.Request.GetCmdId(), execTime.Seconds())
 		} else {
 			log.Info("time is %v second", execTime.Seconds())
 		}
 
-		// Send response to client
-		//this.Send(response)
-		//this.Send <-
-
-		if this.Role.Uid != 0 && index > 0 {
+		if this.Role.Uid != 0 && this.Request.GetCmdId() > 0 {
 			//玩家操作记录
-			if _, ok := request_log_map[index]; ok {
+			if _, ok := request_log_map[this.Request.GetCmdId()]; ok {
 				//				requestLog.InsertLog(player.UniqueId, index)
 			}
 		}
 	}
 }
 
-func (this *Connect) Function(index int32) func() {
+func (this *Connect) Function(index int32) func() error {
 	switch index {
 	case 10103:
 		return this.Login
@@ -172,8 +169,9 @@ func (this *Connect) Function(index int32) func() {
 	case 10114:
 		return this.ItemLevelUp
 	default:
-		this.Send(lineNum(), fmt.Sprintf("没有这方法 index : %d", index))
-		return func() {}
+		return func() error {
+			return this.Send(lineNum(), fmt.Sprintf("没有这方法 index : %d", index))
+		}
 	}
 }
 
