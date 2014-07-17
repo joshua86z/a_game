@@ -43,7 +43,7 @@ type Connect struct {
 
 func (this *Connect) Send(code protodata.StatusCode, value interface{}, err error) {
 	if err != nil {
-		value = fmt.Errorf("%v", err)
+		value = fmt.Sprintf("%v", err)
 	}
 	this.send(ReturnStr(this.Request, code, value))
 	this.Request = nil
@@ -114,9 +114,10 @@ func (this *Connect) PullFromClient() {
 
 		// parse proto message
 
-		if request, err := ParseContent(content); err != nil {
+		request, err := ParseContent(content)
+		if err != nil {
 			log.Error("Parse client request error. %v", err)
-			this.send(ReturnStr(request, 9998, fmt.Sprintf("客户端错误:%v", err)))
+			this.send(ReturnStr(request, lineNum(), fmt.Sprintf("客户端错误:%v", err)))
 			continue
 		} else {
 			this.Request = request
@@ -128,7 +129,7 @@ func (this *Connect) PullFromClient() {
 		defer func() {
 			if err := recover(); err != nil {
 				log.Critical("Panic occur. %v", err)
-				this.Send(9999, nil, err)
+				this.Send(lineNum(), nil, err)
 			}
 		}()
 
@@ -153,11 +154,11 @@ func (this *Connect) PullFromClient() {
 		}
 
 		// 执行命令
-		log.Info("Exec %v -> %s (uid:%d)", index, handlerNames[index], RoleModel.Uid)
 		if function, ok := handlers[index]; ok {
+			log.Info("Exec %v -> %s (uid:%d)", index, function, RoleModel.Uid)
 			function()
 		} else {
-			this.Send(9997, nil, fmt.Errorf("没有这方法 index : %d", index))
+			this.Send(lineNum(), nil, fmt.Errorf("没有这方法 index : %d", index))
 			continue
 		}
 
@@ -182,6 +183,35 @@ func (this *Connect) PullFromClient() {
 				//				requestLog.InsertLog(player.UniqueId, index)
 			}
 		}
+	}
+}
+
+func (this *Connect) Function(index int32) func() {
+	switch index {
+	case 10103:
+		return this.Login
+	case 10104:
+		return this.UserDataRequest
+	case 10105:
+		return this.SetRoleName
+	case 10106:
+		return this.RandomName
+	case 10107:
+		return this.BuyStaminaRequest
+	case 10108:
+		return this.BuyCoinRequest
+	case 10110:
+		return this.GeneralLevelUp
+	case 10111:
+		return this.Buyeneral
+	case 10112:
+		return this.MailList
+	case 10113:
+		return this.MailRewardRequest
+	case 10114:
+		return this.ItemLevelUp
+	default:
+		return func() {}
 	}
 }
 
@@ -220,7 +250,7 @@ func SendMessage(uid int64, message string) error {
 	if Connect, ok := playerMap[uid]; !ok {
 		return fmt.Errorf("uid : %d not online", uid)
 	} else {
-		Connect.Send(message)
+		Connect.send(message)
 	}
 	playLock.Unlock()
 	return nil
