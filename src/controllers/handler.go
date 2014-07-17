@@ -22,35 +22,43 @@ var (
 	online          int
 	gameToken       *token.Token
 	playLock        sync.Mutex
-	playerMap       map[int64]*Conn
+	playerMap       map[int64]*Connect
 	request_log_map map[int32]string
 )
 
 func init() {
 	gameToken = token.NewToken(tokenAdapter{})
-	playerMap = make(map[int64]*Conn)
+	playerMap = make(map[int64]*Connect)
 	request_log_map = make(map[int32]string)
 	CountOnline()
 }
 
-func Handler(ws *websocket.Conn) {
+// Client Connect
+type Connect struct {
+	Role *models.RoleModel
+	Websocket *websocket.Connect
+	Request   *protodata.CommectRequest
+	Chan      chan string
+}
+
+func Handler(ws *websocket.Connect) {
 
 	online++
-	// New Connect
-	conn := &Conn{
-		WsConn: ws,
-		Chan:   make(chan string, 10),
+	// New Connectect
+	Connect := &Connect{
+		Websocket: ws,
+		Chan:      make(chan string, 10),
 	}
 
-	conn.pushToClient()
-	conn.PullFromClient()
-	conn.Close()
+	Connect.pushToClient()
+	Connect.PullFromClient()
+	Connect.Close()
 
 	online--
 }
 
 // get one handler
-func getHandler(index int32) func(*models.RoleModel, *protodata.CommandRequest) (protodata.StatusCode, interface {}, error) {
+func getHandler(index int32) func() {
 
 	// return func
 	if fun, ok := handlers[index]; ok {
@@ -58,35 +66,34 @@ func getHandler(index int32) func(*models.RoleModel, *protodata.CommandRequest) 
 	}
 
 	// return 404 func
-	return func(RoleModel *models.RoleModel, cq *protodata.CommandRequest) (protodata.StatusCode, interface {}, error) {
-		err := fmt.Errorf("No handler map to command:%d", cq.GetCmdId())
-		return 999, nil, err
+	return func() {
 	}
 }
 
 func SendMessage(uid int64, message string) error {
 	playLock.Lock()
-	if conn, ok := playerMap[uid]; !ok {
+	if Connect, ok := playerMap[uid]; !ok {
 		return fmt.Errorf("uid : %d not online", uid)
 	} else {
-		conn.Send(message)
+		Connect.Send(message)
 	}
 	playLock.Unlock()
 	return nil
 }
 
-// Client Conn
-type Conn struct {
-	Uid    int64
-	WsConn *websocket.Conn
-	Chan   chan string
+func (this *Connect) Send(code protodata.StatusCode, value interface{}, err error) {
+	if err != nil {
+		value = fmt.Errorf("%v", err)
+	}
+	this.send(ReturnStr(this.Request, code, value))
+	this.Request = nil
 }
 
-func (this *Conn) Send(s string) {
+func (this *Connect) send(s string) {
 	this.Chan <- s
 }
 
-func (this *Conn) pushToClient() {
+func (this *Connect) pushToClient() {
 	go func() {
 		for s := range this.Chan {
 			var buf = make([]byte, 4)
@@ -95,7 +102,7 @@ func (this *Conn) pushToClient() {
 			Buffer := bytes.NewBuffer(buf)
 			Buffer.WriteString(s)
 
-			if err := websocket.Message.Send(this.WsConn, Buffer.Bytes()); err != nil {
+			if err := websocket.Message.Send(this.Websocket, Buffer.Bytes()); err != nil {
 				log.Warn("Can't send msg. %v", err)
 			} else {
 				log.Info("Send Success")
@@ -104,32 +111,29 @@ func (this *Conn) pushToClient() {
 	}()
 }
 
-func (this *Conn) InMap(uid int64) {
-	this.Uid = uid
+func (this *Connect) InMap(uid int64) {
 	playLock.Lock()
 	if _, ok := playerMap[uid]; !ok {
-		playerMap[uid] = this
+		playerMap[this.Role.Uid] = this
 	}
 	playLock.Unlock()
 }
 
-func (this *Conn) Close() {
+func (this *Connect) Close() {
 	playLock.Lock()
-	delete(playerMap, this.Uid)
+	delete(playerMap, this.Role.Uid)
 	playLock.Unlock()
-	this.WsConn.Close()
+	this.Websocket.Close()
 }
 
 // 从客户端读取信息
-func (this *Conn) PullFromClient() {
+func (this *Connect) PullFromClient() {
 
-	var RoleModel *models.RoleModel
-	var index int32
 	for {
 
-		// receive from ws conn
+		// receive from ws Connect
 		var content string
-		if err := websocket.Message.Receive(this.WsConn, &content); err != nil {
+		if err := websocket.Message.Receive(this.Websocket, &content); err != nil {
 			if err.Error() == "EOF" {
 				log.Info("Websocket receive EOF")
 			} else {
@@ -149,55 +153,51 @@ func (this *Conn) PullFromClient() {
 		beginTime := time.Now()
 		log.Info(" Begin ")
 
-		var response string
-
 		// parse proto message
 		request, err := ParseContent(content)
 		if err != nil {
 			log.Error("Parse client request error. %v", err)
-			response = ReturnStr(request, 9998, fmt.Sprintf("客户端错误:%v", err))
+			this.send(ReturnStr(request, 9998, fmt.Sprintf("客户端错误:%v", err)))
 			continue
 		}
-		index = request.GetCmdId()
+
+		this.Request = request
+		index := request.GetCmdId()
 
 		// Panic recover
 		defer func() {
 			if err := recover(); err != nil {
 				log.Critical("Panic occur. %v", err)
-				response = ReturnStr(request, 9999, fmt.Sprintf("服务器错误:%v", err))
-				this.Send(response)
+				this.Send(9999, nil, err)
 			}
 		}()
 
 		if index != 10000 {
 			// Check Login status
 			if request.GetTokenStr() == "" {
-				response = ReturnStr(request, protodata.StatusCode_INVALID_TOKEN, "")
-				return
+				this.Send(protodata.StatusCode_INVALID_TOKEN, nil, "")
+				continue
 			}
 			uid, _ := gameToken.GetUid(request.GetTokenStr())
 			if uid == 0 {
-				response = ReturnStr(request, protodata.StatusCode_INVALID_TOKEN, "")
-				return
+				this.Send(protodata.StatusCode_INVALID_TOKEN, nil, "")
+				continue
 			} else {
-				this.InMap(uid)
-				if RoleModel == nil {
-					RoleModel = models.NewRoleModel(uid)
+				if this.Role == nil {
+					this.Role = models.NewRoleModel(uid)
+				} else if this.Role.Uid != uid {
+					this.Send(protodata.StatusCode_INVALID_TOKEN, nil, "")
+					continue
 				}
 			}
 		}
 
-		// Checking true
-		handler := getHandler(index)
+		// 执行命令
+		getHandler(index)()
 		log.Info("Exec %v -> %s (uid:%d)", index, handlerNames[index], RoleModel.Uid)
 
 		// 执行命令
-		if code, value, err := handler(RoleModel, request); err != nil {
-			response = ReturnStr(request, code, fmt.Sprintf("%v", err))
-			log.Error("Exec command:%v error. %v", index, err)
-		} else {
-			response = ReturnStr(request, code, value)
-		}
+		//handler()
 
 		execTime := time.Now().Sub(beginTime)
 		if execTime.Seconds() > 0.1 {
@@ -208,10 +208,10 @@ func (this *Conn) PullFromClient() {
 		}
 
 		// Send response to client
-		this.Send(response)
+		//this.Send(response)
 		//this.Send <-
 
-		if RoleModel.Uid != 0 && index > 0 {
+		if this.Role.Uid != 0 && index > 0 {
 			//玩家操作记录
 			if _, ok := request_log_map[index]; ok {
 				//				requestLog.InsertLog(player.UniqueId, index)
@@ -220,7 +220,7 @@ func (this *Conn) PullFromClient() {
 	}
 }
 
-func (this *Conn) OtherRequest(request []byte) {
+func (this *Connect) OtherRequest(request []byte) {
 
 	data := make(map[string]string)
 	json.Unmarshal(request, &data)
