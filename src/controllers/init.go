@@ -3,10 +3,9 @@ package controllers
 import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
+	"libs/cache"
 	"libs/log"
-	"libs/ssdb"
 	"libs/token"
-	"models"
 	_ "models"
 	"protodata"
 	"runtime"
@@ -16,7 +15,6 @@ import (
 
 // 运行变量
 var (
-	online          int
 	gameToken       *token.Token
 	playLock        sync.Mutex
 	playerMap       map[int64]*Connect
@@ -32,15 +30,10 @@ func init() {
 }
 
 func Handler(ws *websocket.Conn) {
-
-	online++
-
 	Connect := &Connect{Conn: ws, Chan: make(chan string, 10)}
 	Connect.pushToClient()
 	Connect.PullFromClient()
 	Connect.Close()
-
-	online--
 }
 
 func SendMessage(uid int64, s string) error {
@@ -56,13 +49,13 @@ func SendMessage(uid int64, s string) error {
 
 func CountOnline() {
 	go func() {
-		//	t := time.Tick(time.Second * 5)
-		t := time.Tick(time.Minute * 5)
+		t := time.Tick(time.Second * 5)
+		//t = time.Tick(time.Minute * 5)
 		for {
 			select {
 			case <-t:
-				//	fmt.Println("online num : ", online)
-				models.DB().Exec("INSERT INTO `stat_online`(`online_num`,`online_time`) VALUES (? , NOW())", online)
+				fmt.Println("online num : ", len(playerMap))
+				//models.DB().Exec("INSERT INTO `stat_online`(`online_num`,`online_time`) VALUES (? , NOW())", online)
 			}
 		}
 	}()
@@ -80,13 +73,20 @@ type tokenAdapter struct {
 }
 
 func (this tokenAdapter) Set(key string, value string) error {
-	return ssdb.SSDB().Set(fmt.Sprintf("ALLHERO_%s", key), value)
+	cache.Instance().Set(fmt.Sprintf("ALLHERO_%s", key), value, 86400*30)
+	return nil
 }
 
 func (this tokenAdapter) Get(key string) (string, error) {
-	return ssdb.SSDB().Get(fmt.Sprintf("ALLHERO_%s", key))
+	cacheData, err := cache.Instance().Get(fmt.Sprintf("ALLHERO_%s", key))
+	if err == nil {
+		return cacheData.(string), err
+	} else {
+		return "", err
+	}
 }
 
 func (this tokenAdapter) Delete(key string) error {
-	return ssdb.SSDB().Del(fmt.Sprintf("ALLHERO_%s", key))
+	cache.Instance().Delete(fmt.Sprintf("ALLHERO_%s", key))
+	return nil
 }

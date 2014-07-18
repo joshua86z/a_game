@@ -19,6 +19,7 @@ const (
 
 // Client Connect
 type Connect struct {
+	Uid     int64
 	Role    *models.RoleModel
 	Conn    *websocket.Conn
 	Chan    chan string
@@ -52,18 +53,27 @@ func (this *Connect) pushToClient() {
 	}()
 }
 
+// 同一个账号只有一个连接
 func (this *Connect) InMap(uid int64) {
+	this.Uid = uid
 	playLock.Lock()
-	if _, ok := playerMap[uid]; !ok {
-		playerMap[this.Role.Uid] = this
+	if val, ok := playerMap[this.Uid]; !ok {
+		playerMap[this.Uid] = this
+	} else {
+		if this.Conn != val.Conn {
+			val.Conn.Close()
+			playerMap[this.Uid] = this
+		}
 	}
 	playLock.Unlock()
 }
 
 func (this *Connect) Close() {
 	playLock.Lock()
-	if this.Role != nil {
-		delete(playerMap, this.Role.Uid)
+	if val, ok := playerMap[this.Uid]; ok {
+		if this.Conn == val.Conn {
+			delete(playerMap, this.Uid)
+		}
 	}
 	playLock.Unlock()
 	this.Conn.Close()
@@ -142,25 +152,25 @@ func (this *Connect) PullFromClient() {
 					continue
 				}
 			}
+			this.InMap(uid)
 		}
 
-		// 执行命令
-		if this.Role != nil {
-			log.Info("Exec -> %d (uid:%d)", this.Request.GetCmdId(), this.Role.Uid)
+		if this.Uid > 0 {
+			log.Info("Exec -> %d (uid:%d)", this.Request.GetCmdId(), this.Uid)
 		}
 
 		this.Function(this.Request.GetCmdId())()
 
 		execTime := time.Now().Sub(beginTime)
-		if execTime.Seconds() > 0.1 {
-			//慢日志
+		if int(execTime.Seconds()) > 1 {
+			// slow log
 			log.Warn("Slow Exec , time is %v second", execTime.Seconds())
 		} else {
 			log.Info("time is %v second", execTime.Seconds())
 		}
 
 		if this.Role != nil {
-			//玩家操作记录
+			// 玩家操作记录
 			if _, ok := request_log_map[this.Request.GetCmdId()]; ok {
 				//				requestLog.InsertLog(player.UniqueId, index)
 			}

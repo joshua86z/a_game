@@ -23,10 +23,7 @@ func (this *Connect) BuyCoinRequest() error {
 		return this.Send(lineNum(), fmt.Errorf("钻石不足"))
 	}
 
-	oldCoin := this.Role.Coin
-	this.Role.Coin += addCoin
-
-	err := this.Role.SubDiamond(needDiamond, models.BUY_COIN, fmt.Sprintf("index: %d , coin:%d -> %d , diamond:%d -> %d", index, oldCoin, this.Role.Coin, this.Role.Diamond, this.Role.Diamond-needDiamond))
+	err := this.Role.DiamondIntoCoin(needDiamond, addCoin, fmt.Sprintf("index : %d", index))
 	if err != nil {
 		return this.Send(lineNum(), err)
 	}

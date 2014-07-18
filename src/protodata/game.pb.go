@@ -112,12 +112,20 @@ func (m *SetUpNameRequest) GetName() string {
 }
 
 type SetUpNameResponse struct {
-	XXX_unrecognized []byte `json:"-"`
+	Role             *RoleData `protobuf:"bytes,1,opt,name=role" json:"role,omitempty"`
+	XXX_unrecognized []byte    `json:"-"`
 }
 
 func (m *SetUpNameResponse) Reset()         { *m = SetUpNameResponse{} }
 func (m *SetUpNameResponse) String() string { return proto.CompactTextString(m) }
 func (*SetUpNameResponse) ProtoMessage()    {}
+
+func (m *SetUpNameResponse) GetRole() *RoleData {
+	if m != nil {
+		return m.Role
+	}
+	return nil
+}
 
 // *************************************随机名字*************************************
 type RandomNameRequest struct {
@@ -352,6 +360,8 @@ func (*MailRequest) ProtoMessage()    {}
 
 type MailResponse struct {
 	Mails            []*MailData `protobuf:"bytes,1,rep,name=mails" json:"mails,omitempty"`
+	Cnnouncement     *string     `protobuf:"bytes,2,opt,name=cnnouncement" json:"cnnouncement,omitempty"`
+	Time             *string     `protobuf:"bytes,3,opt,name=time" json:"time,omitempty"`
 	XXX_unrecognized []byte      `json:"-"`
 }
 
@@ -364,6 +374,20 @@ func (m *MailResponse) GetMails() []*MailData {
 		return m.Mails
 	}
 	return nil
+}
+
+func (m *MailResponse) GetCnnouncement() string {
+	if m != nil && m.Cnnouncement != nil {
+		return *m.Cnnouncement
+	}
+	return ""
+}
+
+func (m *MailResponse) GetTime() string {
+	if m != nil && m.Time != nil {
+		return *m.Time
+	}
+	return ""
 }
 
 // *************************************领取邮件奖励**********************************

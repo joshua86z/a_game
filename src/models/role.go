@@ -208,3 +208,24 @@ func (this *RoleModel) SubDiamond(n int, finance_type FinanceType, desc string) 
 
 	return err
 }
+
+func (this *RoleModel) DiamondIntoCoin(diamond int, coin int, desc string) error {
+
+	oldDiamond := this.Diamond
+	oldCoin := this.Coin
+
+	this.Diamond -= diamond
+	this.Coin += coin
+	this.UnixTime = time.Now().Unix()
+
+	_, err := DB().Update(this)
+	if err == nil {
+		InsertSubDiamondFinanceLog(this.Uid, BUY_COIN, oldDiamond, this.Diamond, desc)
+		InsertAddCoinFinanceLog(this.Uid, BUY_COIN, oldCoin, this.Coin, desc)
+	} else {
+		this.Diamond += oldDiamond
+		this.Coin += oldCoin
+	}
+
+	return err
+}

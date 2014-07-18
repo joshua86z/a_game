@@ -110,9 +110,11 @@ func (this *Connect) SetRoleName() error {
 		return this.Send(lineNum(), fmt.Errorf("这个名字已被使用"))
 	}
 
-	this.Role.SetName(name)
+	if err := this.Role.SetName(name); err != nil {
+		return this.Send(lineNum(), err)
+	}
 
-	return this.Send(protodata.StatusCode_OK, &protodata.SetUpNameResponse{})
+	return this.Send(protodata.StatusCode_OK, &protodata.SetUpNameResponse{Role: roleProto(this.Role)})
 }
 
 func (this *Connect) BuyStaminaRequest() error {

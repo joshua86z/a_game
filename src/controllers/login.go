@@ -49,7 +49,7 @@ func (this *Connect) Login() error {
 	}
 
 	log.Info("Exec -> login (uid:%d)", UserModel.Uid)
-
+	this.InMap(UserModel.Uid)
 	this.Role = models.NewRoleModel(UserModel.Uid)
 
 	models.NewSignModel(UserModel.Uid)
