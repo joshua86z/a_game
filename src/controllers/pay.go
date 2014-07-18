@@ -7,14 +7,11 @@ import (
 	"protodata"
 )
 
-type Pay struct {
-}
-
-func (this *Pay) BuyCoinRequest(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
+func (this *Connect) BuyCoinRequest() error {
 
 	request := &protodata.BuyCoinRequest{}
-	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-		return lineNum(), nil, err
+	if err := Unmarshal(this.Request.GetSerializedString(), request); err != nil {
+		return this.Send(lineNum(), err)
 	}
 
 	index := int(request.GetProductIndex())
@@ -22,21 +19,21 @@ func (this *Pay) BuyCoinRequest(RoleModel *models.RoleModel, commandRequest *pro
 	needDiamond := configList[index-1].Diamond
 	addCoin := configList[index-1].Coin
 
-	if needDiamond > RoleModel.Diamond {
-		return lineNum(), nil, fmt.Errorf("钻石不足")
+	if needDiamond > this.Role.Diamond {
+		return this.Send(lineNum(), fmt.Errorf("钻石不足"))
 	}
 
-	oldCoin := RoleModel.Coin
-	RoleModel.Coin += addCoin
+	oldCoin := this.Role.Coin
+	this.Role.Coin += addCoin
 
-	err := RoleModel.SubDiamond(needDiamond, models.BUY_COIN, fmt.Sprintf("index: %d , coin:%d -> %d , diamond:%d -> %d", index, oldCoin, RoleModel.Coin, RoleModel.Diamond, RoleModel.Diamond-needDiamond))
+	err := this.Role.SubDiamond(needDiamond, models.BUY_COIN, fmt.Sprintf("index: %d , coin:%d -> %d , diamond:%d -> %d", index, oldCoin, this.Role.Coin, this.Role.Diamond, this.Role.Diamond-needDiamond))
 	if err != nil {
-		return lineNum(), nil, err
+		return this.Send(lineNum(), err)
 	}
 
 	response := &protodata.BuyCoinResponse{
-		Role: roleProto(RoleModel),
+		Role: roleProto(this.Role),
 		Coin: proto.Int32(int32(addCoin)),
 	}
-	return protodata.StatusCode_OK, response, nil
+	return this.Send(protodata.StatusCode_OK, response)
 }

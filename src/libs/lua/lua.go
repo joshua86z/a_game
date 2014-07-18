@@ -1,6 +1,6 @@
 package lua
 
-/*
+//*
 import (
 	"bufio"
 	"os"
@@ -94,10 +94,11 @@ func (this *setting) Close() error {
 }
 
 func trim(s string) string {
+	s = strings.Replace(s, "\\\\,", "\\,", len(s))
 	return strings.Trim(s, "\t\n\r \"")
 }
 
-//*///*
+/*///*
 import (
 	"github.com/fhbzyc/golua/lua"
 	"os"

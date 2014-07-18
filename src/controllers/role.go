@@ -10,21 +10,9 @@ import (
 	"strings"
 )
 
-type Role struct {
-}
+func (this *Connect) UserDataRequest() error {
 
-func (this *Role) UserDataRequest(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
-
-	if RoleModel == nil {
-		RoleModel = &models.RoleModel{}
-		RoleModel.Coin = 0
-		RoleModel.Diamond = 0
-		if err := models.InsertRole(RoleModel); err != nil {
-			return lineNum(), nil, err
-		}
-	}
-
-	SignModel := models.NewSignModel(RoleModel.Uid)
+	SignModel := models.NewSignModel(this.Role.Uid)
 	signDay := SignModel.Times % 7
 	if signDay == 0 {
 		signDay = 7
@@ -61,24 +49,24 @@ func (this *Role) UserDataRequest(RoleModel *models.RoleModel, commandRequest *p
 	}
 
 	response := &protodata.UserDataResponse{
-		Role:             roleProto(RoleModel),
-		Items:            itemProtoList(models.NewItemModel(RoleModel.Uid).List()),
-		Generals:         generalProtoList(models.NewGeneralModel(RoleModel.Uid).List()),
+		Role:             roleProto(this.Role),
+		Items:            itemProtoList(models.NewItemModel(this.Role.Uid).List()),
+		Generals:         generalProtoList(models.NewGeneralModel(this.Role.Uid).List()),
 		SignReward:       signProto,
-		Chapters:         getDuplicateProto(models.NewDuplicateModel(RoleModel.Uid)),
+		Chapters:         getDuplicateProto(models.NewDuplicateModel(this.Role.Uid)),
 		TempItemDiamonds: []int32{5, 5, 5, 5},
 		CoinProducts:     coinProductProtoList,
 		DiamondProducts:  productProtoList}
 
-	return protodata.StatusCode_OK, response, nil
+	return this.Send(protodata.StatusCode_OK, response)
 }
 
 // 随机生成角色名字
-func (role *Role) RandomName(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
+func (this *Connect) RandomName() error {
 
 	L, err := lua.NewLua("conf/random_name.lua")
 	if err != nil {
-		return lineNum(), nil, err
+		return this.Send(lineNum(), err)
 	}
 
 	firstNameStr := L.GetString("first_name")
@@ -96,19 +84,19 @@ func (role *Role) RandomName(RoleModel *models.RoleModel, commandRequest *protod
 		Name: proto.String(firstName + secondName),
 	}
 
-	return protodata.StatusCode_OK, response, nil
+	return this.Send(protodata.StatusCode_OK, response)
 }
 
-func (role *Role) SetRoleName(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
+func (this *Connect) SetRoleName() error {
 
 	request := &protodata.SetUpNameRequest{}
-	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-		return lineNum(), nil, err
+	if err := Unmarshal(this.Request.GetSerializedString(), request); err != nil {
+		return this.Send(lineNum(), err)
 	}
 
 	name := request.GetName()
 	if name == "" {
-		return lineNum(), nil, fmt.Errorf("名字不能为空")
+		return this.Send(lineNum(), fmt.Errorf("名字不能为空"))
 	}
 
 	rune := []rune(name)
@@ -119,36 +107,31 @@ func (role *Role) SetRoleName(RoleModel *models.RoleModel, commandRequest *proto
 
 	// 判断是否存在此用户名
 	if n := models.NumberByRoleName(name); n > 0 {
-		return lineNum(), nil, fmt.Errorf("这个名字已被使用")
+		return this.Send(lineNum(), fmt.Errorf("这个名字已被使用"))
 	}
 
-	RoleModel.SetName(name)
+	this.Role.SetName(name)
 
-	return protodata.StatusCode_OK, &protodata.SetUpNameResponse{}, nil
+	return this.Send(protodata.StatusCode_OK, &protodata.SetUpNameResponse{})
 }
 
-func (this *Role) BuyStaminaRequest(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
+func (this *Connect) BuyStaminaRequest() error {
 
-	if RoleModel.ActionValue() >= models.MaxActionValue {
-		return lineNum(), nil, fmt.Errorf("体力已满")
+	if this.Role.ActionValue() >= models.MaxActionValue {
+		return this.Send(lineNum(), fmt.Errorf("体力已满"))
 	}
 
 	needDiamond := actionValueDiamond()
-	if RoleModel.Diamond < needDiamond {
-		return lineNum(), nil, fmt.Errorf("钻石不足")
+	if this.Role.Diamond < needDiamond {
+		return this.Send(lineNum(), fmt.Errorf("钻石不足"))
 	}
 
-	oldDiamond := RoleModel.Diamond
-	oldAction := RoleModel.ActionValue()
-	RoleModel.Diamond -= needDiamond
-	err := RoleModel.SetActionValue(models.MaxActionValue)
+	err := this.Role.BuyActionValue(needDiamond, models.MaxActionValue)
 	if err != nil {
-		return lineNum(), nil, err
-	} else {
-		models.InsertSubDiamondFinanceLog(RoleModel.Uid, models.BUY_ACTION, oldDiamond, RoleModel.Diamond, fmt.Sprintf("%d -> %d", oldAction, models.MaxActionValue))
+		return this.Send(lineNum(), err)
 	}
 
-	return protodata.StatusCode_OK, &protodata.BuyStaminaResponse{}, nil
+	return this.Send(protodata.StatusCode_OK, &protodata.BuyStaminaResponse{})
 }
 
 func roleProto(RoleModel *models.RoleModel) *protodata.RoleData {
@@ -197,7 +180,7 @@ func actionValueDiamond() int {
 //}
 //
 //// 随机生成角色名字
-//func (role *Role) RoleRandomName(player *Player, commandRequest *pb.CommandRequest) (string, error) {
+//func (role *Role) RoleRandomName(player *Player, this.Request *pb.CommandRequest) (string, error) {
 //
 //	// random name
 //	//	random := role.random
@@ -214,16 +197,16 @@ func actionValueDiamond() int {
 //		Name:  proto.String(name),
 //	}
 //
-//	return pd.ReturnStr(commandRequest, pb.StatusCode_OK, response), nil
+//	return pd.ReturnStr(this.Request, pb.StatusCode_OK, response), nil
 //}
 //
 //// 设定角色名字 (初始化用户)
-//func (role *Role) SetRoleName(player *Player, commandRequest *pb.CommandRequest) (string, error) {
+//func (role *Role) SetRoleName(player *Player, this.Request *pb.CommandRequest) (string, error) {
 //
 //	uniqueId := player.UniqueId
 //	request := &pb.SetRoleNameRequest{}
-//	if err := pd.Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_DATA_ERROR, ""), err
+//	if err := pd.Unmarshal(this.Request.GetSerializedString(), request); err != nil {
+//		return pd.ReturnStr(this.Request, pb.StatusCode_DATA_ERROR, ""), err
 //	}
 //
 //	// 创建新角色
@@ -231,7 +214,7 @@ func actionValueDiamond() int {
 //	if !role.checkNameValid(name) {
 //
 //		// 用户名非法，你懂的
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_OK, &pb.SetRoleNameResponse{
+//		return pd.ReturnStr(this.Request, pb.StatusCode_OK, &pb.SetRoleNameResponse{
 //			ECode: proto.Int32(2),
 //			EStr:  proto.String(ESTR_character_notvalid),
 //		}), nil
@@ -245,7 +228,7 @@ func actionValueDiamond() int {
 //
 //	// 判断是否存在此用户名
 //	if r := models.GetRoleByName(name); r.Unique > 0 {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_OK, &pb.SetRoleNameResponse{
+//		return pd.ReturnStr(this.Request, pb.StatusCode_OK, &pb.SetRoleNameResponse{
 //			ECode: proto.Int32(3),
 //			EStr:  proto.String(ESTR_role_name_exist),
 //		}), nil
@@ -254,7 +237,7 @@ func actionValueDiamond() int {
 //	// 初始化角色 从unique截取uid
 //	uid, err := strconv.ParseInt(Substr(fmt.Sprintf("%d", uniqueId), 3, -1), 10, 32)
 //	if err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_SERVER_INTERNAL_ERROR, ""), err
+//		return pd.ReturnStr(this.Request, pb.StatusCode_SERVER_INTERNAL_ERROR, ""), err
 //	}
 //
 //	// 角色初始化数据
@@ -272,7 +255,7 @@ func actionValueDiamond() int {
 //		RegTime:    time.Now().Unix(),
 //	}
 //	if err = userRole.Insert(); err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_CACHE_ERROR, ""), err
+//		return pd.ReturnStr(this.Request, pb.StatusCode_CACHE_ERROR, ""), err
 //	} else {
 //
 //		genIds := [4]int{1106, 1416, 1435, 1446}
@@ -280,7 +263,7 @@ func actionValueDiamond() int {
 //		for _, genId := range genIds {
 //			_, err = models.InsertGeneral(uniqueId, genId, true)
 //			if err != nil {
-//				return pd.ReturnStr(commandRequest, pb.StatusCode_DATABASE_ERROR, ""), err
+//				return pd.ReturnStr(this.Request, pb.StatusCode_DATABASE_ERROR, ""), err
 //			}
 //		}
 //	}
@@ -292,17 +275,17 @@ func actionValueDiamond() int {
 //	L.Close()
 //
 //	if err = models.InsertAccount(uniqueId, newCoin, newIngot, newPoint); err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_CACHE_ERROR, ""), err
+//		return pd.ReturnStr(this.Request, pb.StatusCode_CACHE_ERROR, ""), err
 //	}
 //
-//	return pd.ReturnStr(commandRequest, pb.StatusCode_OK, &pb.SetRoleNameResponse{
+//	return pd.ReturnStr(this.Request, pb.StatusCode_OK, &pb.SetRoleNameResponse{
 //		ECode: proto.Int32(1),
 //	}), nil
 //
 //}
 //
 //// 获取玩家角色信息 (如果没有角色，返回0值)
-//func (this *Role) RoleBaseInfo(player *Player, commandRequest *pb.CommandRequest) (string, error) {
+//func (this *Connect) RoleBaseInfo(player *Player, this.Request *pb.CommandRequest) (string, error) {
 //
 //	uniqueId := player.UniqueId
 //	userRole := models.GetRole(uniqueId)
@@ -336,41 +319,41 @@ func actionValueDiamond() int {
 //		RolePackData:      getRoleData(userRole, money),
 //	}
 //
-//	return pd.ReturnStr(commandRequest, pb.StatusCode_OK, response), nil
+//	return pd.ReturnStr(this.Request, pb.StatusCode_OK, response), nil
 //}
 //
 //// 设置新手进度
-//func (role *Role) SetGuideStatus(player *Player, commandRequest *pb.CommandRequest) (string, error) {
+//func (role *Role) SetGuideStatus(player *Player, this.Request *pb.CommandRequest) (string, error) {
 //	request := &pb.SetGuideStatusRequest{}
-//	if err := pd.Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_DATA_ERROR, ""), err
+//	if err := pd.Unmarshal(this.Request.GetSerializedString(), request); err != nil {
+//		return pd.ReturnStr(this.Request, pb.StatusCode_DATA_ERROR, ""), err
 //	}
 //
 //	newProc := request.GetStatus()
 //
 //	err := models.UpdateNewProc(player.UniqueId, int(newProc))
 //	if err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_DATABASE_ERROR, ""), err
+//		return pd.ReturnStr(this.Request, pb.StatusCode_DATABASE_ERROR, ""), err
 //	}
 //
-//	return pd.ReturnStr(commandRequest, pb.StatusCode_OK, &pb.SetGuideStatusResponse{
+//	return pd.ReturnStr(this.Request, pb.StatusCode_OK, &pb.SetGuideStatusResponse{
 //		ECode: proto.Int32(1),
 //	}), nil
 //}
 //
 //// 玩家角色成就信息
-//func (role *Role) AchieveInfo(player *Player, commandRequest *pb.CommandRequest) (string, error) {
+//func (role *Role) AchieveInfo(player *Player, this.Request *pb.CommandRequest) (string, error) {
 //
 //	uniqueId := player.UniqueId
 //
 //	request := &pb.AchieveInfoRequest{}
-//	if err := pd.Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_DATA_ERROR, ""), err
+//	if err := pd.Unmarshal(this.Request.GetSerializedString(), request); err != nil {
+//		return pd.ReturnStr(this.Request, pb.StatusCode_DATA_ERROR, ""), err
 //	}
 //
 //	achievementList, err := models.GetRoleAchievements(uniqueId)
 //	if err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_DATABASE_ERROR, ""), err
+//		return pd.ReturnStr(this.Request, pb.StatusCode_DATABASE_ERROR, ""), err
 //	}
 //
 //	var result []struct {
@@ -448,36 +431,36 @@ func actionValueDiamond() int {
 //		response.Type = append(response.Type, val.Type)
 //	}
 //
-//	return pd.ReturnStr(commandRequest, pb.StatusCode_OK, response), nil
+//	return pd.ReturnStr(this.Request, pb.StatusCode_OK, response), nil
 //}
 //
 //// 10194 领取成就奖励
-//func (role *Role) GetAchieveRewards(player *Player, commandRequest *pb.CommandRequest) (string, error) {
+//func (role *Role) GetAchieveRewards(player *Player, this.Request *pb.CommandRequest) (string, error) {
 //
 //	var err error
 //	uniqueId := player.UniqueId
 //
 //	request := &pb.GetAchieveRewardsRequest{}
-//	if err := pd.Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_DATA_ERROR, ""), err
+//	if err := pd.Unmarshal(this.Request.GetSerializedString(), request); err != nil {
+//		return pd.ReturnStr(this.Request, pb.StatusCode_DATA_ERROR, ""), err
 //	}
 //
 //	achId := int(request.GetAchieveId())
 //
 //	if achievement, err := models.GetAchievementByAchId(uniqueId, achId); err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_DATA_ERROR, ""), err
+//		return pd.ReturnStr(this.Request, pb.StatusCode_DATA_ERROR, ""), err
 //	} else if achievement.Status != 1 {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_DATA_ERROR, ""), fmt.Errorf("这个成就已领取过")
+//		return pd.ReturnStr(this.Request, pb.StatusCode_DATA_ERROR, ""), fmt.Errorf("这个成就已领取过")
 //	}
 //
 //	configAchievement := configs.ConfigAchievementGetAll()[achId]
 //
 //	if err = models.GetAchieveIngot(uniqueId, achId); err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_DATABASE_ERROR, ""), err
+//		return pd.ReturnStr(this.Request, pb.StatusCode_DATABASE_ERROR, ""), err
 //	}
 //
 //	if err = models.GetMoney(uniqueId).AddGold(configAchievement.Ingot, models.IG_ACHIVES, "achievement : "+configAchievement.Name); err != nil {
-//		return pd.ReturnStr(commandRequest, pb.StatusCode_DATABASE_ERROR, ""), err
+//		return pd.ReturnStr(this.Request, pb.StatusCode_DATABASE_ERROR, ""), err
 //	}
 //
 //	response := &pb.GetAchieveRewardsResponse{
@@ -485,11 +468,11 @@ func actionValueDiamond() int {
 //		Ingot: proto.Int32(int32(configAchievement.Ingot)),
 //	}
 //
-//	return pd.ReturnStr(commandRequest, pb.StatusCode_OK, response), nil
+//	return pd.ReturnStr(this.Request, pb.StatusCode_OK, response), nil
 //}
 //
 //// 获取角色Buff状态信息
-//func (role *Role) RoleBuffInfo(player *Player, commandRequest *pb.CommandRequest) (string, error) {
+//func (role *Role) RoleBuffInfo(player *Player, this.Request *pb.CommandRequest) (string, error) {
 //
 //	response := &pb.RoleBuffInfoResponse{
 //		ECode:              proto.Int32(1),
@@ -504,11 +487,11 @@ func actionValueDiamond() int {
 //		GeneralExpMultiple: proto.Int32(1),
 //		GeneralExpBuffTime: proto.Int32(1),
 //	}
-//	return pd.ReturnStr(commandRequest, pb.StatusCode_OK, response), nil
+//	return pd.ReturnStr(this.Request, pb.StatusCode_OK, response), nil
 //}
 //
 //// 角色购买体力检查
-//func (this *Role) RoleBuyStaminaCheck(player *Player, commandRequest *pb.CommandRequest) (string, error) {
+//func (this *Connect) RoleBuyStaminaCheck(player *Player, this.Request *pb.CommandRequest) (string, error) {
 //
 //	// 判断购买体力状态
 //	uniqueId := player.UniqueId
@@ -543,11 +526,11 @@ func actionValueDiamond() int {
 //		BuyCost:         proto.Int32(int32(needIngot)),
 //	}
 //
-//	return pd.ReturnStr(commandRequest, pb.StatusCode_OK, response), nil
+//	return pd.ReturnStr(this.Request, pb.StatusCode_OK, response), nil
 //}
 //
 //// 角色购买体力
-//func (this *Role) RoleBuyStamina(player *Player, commandRequest *pb.CommandRequest) (string, error) {
+//func (this *Connect) RoleBuyStamina(player *Player, this.Request *pb.CommandRequest) (string, error) {
 //
 //	// 判断购买体力状态
 //	uniqueId := player.UniqueId
@@ -599,7 +582,7 @@ func actionValueDiamond() int {
 //			} else {
 //
 //				if err := money.SubGold(needIngot, models.IG_BUY_STA, ""); err != nil {
-//					return pd.ReturnStr(commandRequest, pb.StatusCode_DATABASE_ERROR, ""), err
+//					return pd.ReturnStr(this.Request, pb.StatusCode_DATABASE_ERROR, ""), err
 //				}
 //
 //				// 增加体力
@@ -633,7 +616,7 @@ func actionValueDiamond() int {
 //
 //	this.addBuyActionPointNum(uniqueId)
 //
-//	return pd.ReturnStr(commandRequest, pb.StatusCode_OK, response), nil
+//	return pd.ReturnStr(this.Request, pb.StatusCode_OK, response), nil
 //}
 //
 //// 获取姓名列表供随机组合
@@ -680,7 +663,7 @@ func actionValueDiamond() int {
 //}
 //
 //// 检查是否可购买体力 返回当日已购买次数
-//func (this *Role) todayBuyActionPointNum(uniqueId int64) int {
+//func (this *Connect) todayBuyActionPointNum(uniqueId int64) int {
 //
 //	key := fmt.Sprintf("%d_BUYACTIONPOINTNUM_%d", ServerId, uniqueId)
 //	str, _ := ssdb.SSDB().Get(key)
@@ -695,7 +678,7 @@ func actionValueDiamond() int {
 //	return 0
 //}
 //
-//func (this *Role) addBuyActionPointNum(uniqueId int64) {
+//func (this *Connect) addBuyActionPointNum(uniqueId int64) {
 //	num := 0
 //	date := time.Now().Format("0102")
 //	key := fmt.Sprintf("%d_BUYACTIONPOINTNUM_%d", ServerId, uniqueId)

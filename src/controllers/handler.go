@@ -13,6 +13,10 @@ import (
 	"time"
 )
 
+const (
+	LOGIN int32 = 10103
+)
+
 // Client Connect
 type Connect struct {
 	Role    *models.RoleModel
@@ -22,6 +26,9 @@ type Connect struct {
 }
 
 func (this *Connect) Send(code protodata.StatusCode, value interface{}) error {
+	if _, ok := value.(error); ok {
+		log.Error("Error: %v", value)
+	}
 	this.Chan <- ReturnStr(this.Request, code, value)
 	this.Request = nil
 	return nil
@@ -55,7 +62,9 @@ func (this *Connect) InMap(uid int64) {
 
 func (this *Connect) Close() {
 	playLock.Lock()
-	delete(playerMap, this.Role.Uid)
+	if this.Role != nil {
+		delete(playerMap, this.Role.Uid)
+	}
 	playLock.Unlock()
 	this.Conn.Close()
 }
@@ -79,7 +88,7 @@ func (this *Connect) PullFromClient() {
 			if err.Error() == "EOF" {
 				log.Info("Conn receive EOF")
 			} else {
-				log.Error("Can't receive message. %v", err)
+				log.Warn("Can't receive message. %v", err)
 			}
 			return
 		}
@@ -103,7 +112,7 @@ func (this *Connect) PullFromClient() {
 			continue
 		}
 
-		if this.Request.GetCmdId() != 10000 {
+		if this.Request.GetCmdId() != LOGIN {
 			// Check Login status
 			if this.Request.GetTokenStr() == "" {
 				this.Send(protodata.StatusCode_INVALID_TOKEN, nil)
@@ -116,6 +125,18 @@ func (this *Connect) PullFromClient() {
 			} else {
 				if this.Role == nil {
 					this.Role = models.NewRoleModel(uid)
+					if this.Role == nil {
+						this.Role = &models.RoleModel{}
+						this.Role.Uid = uid
+						this.Role.Coin = 0
+						this.Role.Diamond = 0
+						if err := models.InsertRole(this.Role); err != nil {
+							this.Role = nil
+							this.Send(lineNum(), err)
+							continue
+						}
+					}
+
 				} else if this.Role.Uid != uid {
 					this.Send(protodata.StatusCode_INVALID_TOKEN, nil)
 					continue
@@ -124,18 +145,21 @@ func (this *Connect) PullFromClient() {
 		}
 
 		// 执行命令
+		if this.Role != nil {
+			log.Info("Exec -> %d (uid:%d)", this.Request.GetCmdId(), this.Role.Uid)
+		}
+
 		this.Function(this.Request.GetCmdId())()
-		log.Info("Exec -> %d (uid:%d)", this.Request.GetCmdId(), this.Role.Uid)
 
 		execTime := time.Now().Sub(beginTime)
 		if execTime.Seconds() > 0.1 {
 			//慢日志
-			log.Warn("Slow Exec -> %d, time is %v second", this.Request.GetCmdId(), execTime.Seconds())
+			log.Warn("Slow Exec , time is %v second", execTime.Seconds())
 		} else {
 			log.Info("time is %v second", execTime.Seconds())
 		}
 
-		if this.Role.Uid != 0 && this.Request.GetCmdId() > 0 {
+		if this.Role != nil {
 			//玩家操作记录
 			if _, ok := request_log_map[this.Request.GetCmdId()]; ok {
 				//				requestLog.InsertLog(player.UniqueId, index)
@@ -146,7 +170,7 @@ func (this *Connect) PullFromClient() {
 
 func (this *Connect) Function(index int32) func() error {
 	switch index {
-	case 10103:
+	case LOGIN:
 		return this.Login
 	case 10104:
 		return this.UserDataRequest
@@ -161,7 +185,7 @@ func (this *Connect) Function(index int32) func() error {
 	case 10110:
 		return this.GeneralLevelUp
 	case 10111:
-		return this.Buyeneral
+		return this.BuyGeneral
 	case 10112:
 		return this.MailList
 	case 10113:

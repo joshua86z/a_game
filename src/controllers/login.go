@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"code.google.com/p/goprotobuf/proto"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"libs/log"
 	"libs/lua"
@@ -9,14 +11,11 @@ import (
 	"protodata"
 )
 
-type Login struct {
-}
-
-func (this *Login) Login(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
+func (this *Connect) Login() error {
 
 	request := &protodata.LoginRequest{}
-	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-		return lineNum(), nil, err
+	if err := Unmarshal(this.Request.GetSerializedString(), request); err != nil {
+		return this.Send(lineNum(), err)
 	}
 
 	username := request.GetUsername()
@@ -24,28 +23,39 @@ func (this *Login) Login(RoleModel *models.RoleModel, commandRequest *protodata.
 	otherId := request.GetOtherId()
 	platId := int(request.GetPlatId())
 
+	m := md5.New()
+	m.Write([]byte(password))
+	password = hex.EncodeToString(m.Sum(nil))
+
 	UserModel := models.GetUserByName(username)
 	if UserModel == nil {
+		UserModel = &models.UserModel{}
 		UserModel.UserName = username
 		UserModel.Password = password
 		UserModel.OtherId = otherId
 		UserModel.PlatId = platId
 		if err := UserModel.Insert(); err != nil {
-			return lineNum(), nil, err
+			return this.Send(lineNum(), err)
+		}
+	} else {
+		if password != UserModel.Password {
+			return this.Send(lineNum(), fmt.Errorf("密码错误"))
 		}
 	}
 
-	uid := UserModel.Uid
-	token, err := gameToken.AddToken(uid)
+	token, err := gameToken.AddToken(UserModel.Uid)
 	if err != nil {
-		return lineNum(), nil, err
+		return this.Send(lineNum(), err)
 	}
 
-	RoleModel = models.NewRoleModel(uid)
-	models.NewSignModel(uid)
+	log.Info("Exec -> login (uid:%d)", UserModel.Uid)
+
+	this.Role = models.NewRoleModel(UserModel.Uid)
+
+	models.NewSignModel(UserModel.Uid)
 
 	response := &protodata.LoginResponse{TokenStr: proto.String(token)}
-	return protodata.StatusCode_OK, response, nil
+	return this.Send(protodata.StatusCode_OK, response)
 }
 
 func otherLogin(platId int, otherId string, session string, sign string, otherData string) (string, bool) {

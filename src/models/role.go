@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -50,6 +51,7 @@ func NewRoleModel(uid int64) *RoleModel {
 }
 
 func InsertRole(RoleModel *RoleModel) error {
+	RoleModel.UnixTime = time.Now().Unix()
 	return DB().Insert(RoleModel)
 }
 
@@ -70,6 +72,9 @@ func (this *RoleModel) SetName(name string) error {
 	this.Name = name
 	this.UnixTime = time.Now().Unix()
 	_, err := DB().Update(this)
+	if err != nil {
+		this = nil
+	}
 	return err
 }
 
@@ -97,6 +102,34 @@ func (this *RoleModel) SetActionValue(n int) error {
 	this.UnixTime = nowUnix
 
 	_, err := DB().Update(this)
+	if err != nil {
+		this = nil
+	}
+	return err
+}
+
+func (this *RoleModel) BuyActionValue(diamond int, n int) error {
+
+	if n > MaxActionValue {
+		this.OtherAction = n - MaxActionValue
+		n = MaxActionValue
+	}
+
+	oldDiamond := this.Diamond
+	oldAction := this.ActionValue()
+
+	nowUnix := time.Now().Unix()
+	remainder := int(nowUnix-this.ActionTime) % ActionWaitTime
+	this.ActionTime = nowUnix - int64(remainder) - int64(ActionWaitTime*n)
+	this.UnixTime = nowUnix
+	this.Diamond -= diamond
+
+	_, err := DB().Update(this)
+	if err == nil {
+		InsertSubDiamondFinanceLog(this.Uid, BUY_ACTION, oldDiamond, this.Diamond, fmt.Sprintf("%d -> %d", oldAction, n))
+	} else {
+		this = nil
+	}
 	return err
 }
 
@@ -118,6 +151,8 @@ func (this *RoleModel) AddCoin(n int, finance_type FinanceType, desc string) err
 	_, err := DB().Update(this)
 	if err == nil {
 		InsertSubDiamondFinanceLog(this.Uid, finance_type, oldMoney, this.Coin, desc)
+	} else {
+		this.Coin -= n
 	}
 
 	return err
@@ -133,6 +168,8 @@ func (this *RoleModel) SubCoin(n int, finance_type FinanceType, desc string) err
 	_, err := DB().Update(this)
 	if err == nil {
 		InsertSubDiamondFinanceLog(this.Uid, finance_type, oldMoney, this.Coin, desc)
+	} else {
+		this.Coin += n
 	}
 
 	return err
@@ -148,6 +185,8 @@ func (this *RoleModel) AddDiamond(n int, finance_type FinanceType, desc string) 
 	_, err := DB().Update(this)
 	if err == nil {
 		InsertSubDiamondFinanceLog(this.Uid, finance_type, oldMoney, this.Diamond, desc)
+	} else {
+		this.Diamond -= n
 	}
 
 	return err
@@ -163,6 +202,8 @@ func (this *RoleModel) SubDiamond(n int, finance_type FinanceType, desc string) 
 	_, err := DB().Update(this)
 	if err == nil {
 		InsertSubDiamondFinanceLog(this.Uid, finance_type, oldMoney, this.Diamond, desc)
+	} else {
+		this.Diamond += n
 	}
 
 	return err

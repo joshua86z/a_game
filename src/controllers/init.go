@@ -3,6 +3,7 @@ package controllers
 import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
+	"libs/log"
 	"libs/ssdb"
 	"libs/token"
 	"models"
@@ -27,9 +28,10 @@ func init() {
 	playerMap = make(map[int64]*Connect)
 	request_log_map = make(map[int32]string)
 	CountOnline()
+	log.Info("Program Run !")
 }
 
-func Handler(ws *websocket.Connect) {
+func Handler(ws *websocket.Conn) {
 
 	online++
 

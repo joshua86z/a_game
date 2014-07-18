@@ -7,20 +7,17 @@ import (
 	"protodata"
 )
 
-type Item struct {
-}
-
-func (this *Item) LevelUp(RoleModel *models.RoleModel, commandRequest *protodata.CommandRequest) (protodata.StatusCode, interface{}, error) {
+func (this *Connect) ItemLevelUp() error {
 
 	request := &protodata.ItemLevelUpRequest{}
-	if err := Unmarshal(commandRequest.GetSerializedString(), request); err != nil {
-		return lineNum(), nil, err
+	if err := Unmarshal(this.Request.GetSerializedString(), request); err != nil {
+		return this.Send(lineNum(), err)
 	}
 
 	configId := int(request.GetItemId())
 
 	config := models.ConfigItemList()[configId-1]
-	ItemModel := models.NewItemModel(RoleModel.Uid)
+	ItemModel := models.NewItemModel(this.Role.Uid)
 
 	var coin, level int
 	item := ItemModel.Item(configId)
@@ -31,30 +28,30 @@ func (this *Item) LevelUp(RoleModel *models.RoleModel, commandRequest *protodata
 	}
 	coin = levelUpCoin(level)
 
-	if coin > RoleModel.Coin {
-		return lineNum(), nil, fmt.Errorf("金币不足")
+	if coin > this.Role.Coin {
+		return this.Send(lineNum(), fmt.Errorf("金币不足"))
 	}
 
-	err := RoleModel.SubCoin(coin, models.ITEM_LEVELUP, fmt.Sprintf("item: %s , level: %d -> %d", config.Name, level, level+1))
+	err := this.Role.SubCoin(coin, models.ITEM_LEVELUP, fmt.Sprintf("item: %s , level: %d -> %d", config.Name, level, level+1))
 	if err != nil {
-		return lineNum(), nil, err
+		return this.Send(lineNum(), err)
 	}
 
 	if item == nil {
 		if item = ItemModel.Insert(config); item == nil {
-			return lineNum(), nil, err
+			return this.Send(lineNum(), err)
 		}
 	} else {
 		if err = item.LevelUp(); err != nil {
-			return lineNum(), nil, err
+			return this.Send(lineNum(), err)
 		}
 	}
 
 	response := &protodata.ItemLevelUpResponse{
-		Role: roleProto(RoleModel),
+		Role: roleProto(this.Role),
 		Item: itemProto(item, config),
 	}
-	return protodata.StatusCode_OK, response, nil
+	return this.Send(protodata.StatusCode_OK, response)
 }
 
 func itemProtoList(itemList []*models.ItemData) []*protodata.ItemData {
