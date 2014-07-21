@@ -1,9 +1,7 @@
 package controllers
 
 import (
-	"bytes"
 	"code.google.com/p/go.net/websocket"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"libs/log"
@@ -22,7 +20,7 @@ type Connect struct {
 	Uid     int64
 	Role    *models.RoleModel
 	Conn    *websocket.Conn
-	Chan    chan string
+	Chan    chan []byte
 	Request *protodata.CommandRequest
 }
 
@@ -38,13 +36,7 @@ func (this *Connect) Send(code protodata.StatusCode, value interface{}) error {
 func (this *Connect) pushToClient() {
 	go func() {
 		for s := range this.Chan {
-			var buf = make([]byte, 4)
-			binary.LittleEndian.PutUint32(buf, uint32(len(s)))
-
-			Buffer := bytes.NewBuffer(buf)
-			Buffer.WriteString(s)
-
-			if err := websocket.Message.Send(this.Conn, Buffer.Bytes()); err != nil {
+			if _, err := this.Conn.Write(s); err != nil {
 				log.Warn("Can't send msg. %v", err)
 			} else {
 				log.Info("Send Success")

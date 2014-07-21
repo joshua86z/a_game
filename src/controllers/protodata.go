@@ -7,12 +7,12 @@ import (
 )
 
 // Marshal proto，保证msg都是正确的，否则panic
-func Marshal(msg proto.Message) string {
+func Marshal(msg proto.Message) []byte {
 	b, err := proto.Marshal(msg)
 	if err != nil {
 		panic(err.Error())
 	}
-	return string(b)
+	return b
 }
 
 // 封装反序列化proto (or 直接使用proto.Unmarshal?)
@@ -21,7 +21,7 @@ func Unmarshal(str string, msg proto.Message) error {
 }
 
 // 构造CommandResponse并Marshal成字符串
-func ReturnStr(r *protodata.CommandRequest, code protodata.StatusCode, obj interface{}) string {
+func ReturnStr(r *protodata.CommandRequest, code protodata.StatusCode, obj interface{}) []byte {
 	return Marshal(Return(r, &code, obj))
 }
 
@@ -37,7 +37,7 @@ func Return(r *protodata.CommandRequest, code *protodata.StatusCode, obj interfa
 	case nil:
 		serStr = proto.String("")
 	case proto.Message:
-		serStr = proto.String(Marshal(msg))
+		serStr = proto.String(string(Marshal(msg)))
 	default:
 		serStr = proto.String(fmt.Sprint(obj))
 		//code = pb.StatusCode_SERVER_INTERNAL_ERROR
