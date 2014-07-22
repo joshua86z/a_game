@@ -7,7 +7,7 @@ import (
 	"models"
 	"net/http"
 	_ "net/http/pprof"
-	"protodata"
+//	"protodata"
 )
 
 func init() {
@@ -29,29 +29,35 @@ func httpConfirm(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if OrderModel, err := models.NewOrderModel(r.FormValue("order_id")); err != nil {
-		//	return err
+	orderId := r.FormValue("order_id")
+	if orderId == "" {
+		return
+	}
+
+	OrderModel, err := models.NewOrderModel(r.FormValue("order_id"))
+	if err != nil {
+		return
+	}
+
+	playLock.Lock()
+	conn, ok := playerMap[OrderModel.Uid]
+	playLock.Unlock()
+
+	var RoleModel *models.RoleModel
+	if ok && conn.Role != nil {
+		RoleModel = conn.Role
 	} else {
+		RoleModel = models.NewRoleModel(OrderModel.Uid)
+	}
 
-		playLock.Lock()
-		conn, ok := playerMap[OrderModel.Uid]
-		playLock.Unlock()
-
-		var RoleModel *models.RoleModel
-		if ok && conn.Role != nil {
-			RoleModel = conn.Role
-		} else {
-			RoleModel = models.NewRoleModel(OrderModel.Uid)
+	err = OrderModel.Confirm(RoleModel)
+	if ok {
+		var code int = StatusOK
+		var result interface{}
+		if err != nil {
+			code = lineNum()
+			result = err
 		}
-
-		if err = OrderModel.Confirm(RoleModel); err != nil {
-			conn.Send(lineNum(), err)
-			//	return err
-		}
-
-		if ok {
-			conn.Send(protodata.StatusCode_OK, true)
-		}
-		//	return nil
+		conn.Send(code, result)
 	}
 }

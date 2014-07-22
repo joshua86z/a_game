@@ -13,14 +13,13 @@ func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	L, err := lua.NewLua("conf/app.lua")
-	if err != nil {
+	var port int
+	if Lua, err := lua.NewLua("conf/app.lua"); err != nil {
 		panic(err)
+	} else {
+		port = Lua.GetInt("port")
+		Lua.Close()
 	}
-
-	port := L.GetInt("port")
-
-	L.Close()
 
 	http.Handle("/", websocket.Server{Handler: controllers.Handler})
 	if err := http.ListenAndServe(":"+strconv.Itoa(port), nil); err != nil {

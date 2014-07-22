@@ -31,7 +31,7 @@ func InsertOrder(uid int64, rmb int, diamond int) string {
 
 	now := time.Now()
 
-	orderId := fmt.Sprintf("%3d%s%05d", 101, now.Format("200601021504"), rand.Intn(100000))
+	orderId := fmt.Sprintf("101%s%05d", now.Format("200601021504"), rand.Intn(100000))
 
 	order := OrderModel{
 		OrderId:    orderId,

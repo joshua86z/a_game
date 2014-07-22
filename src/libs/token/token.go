@@ -14,27 +14,22 @@ type adapter interface {
 }
 
 type Token struct {
-	prefix   string
 	adapter  adapter
 	isUnique bool
 }
 
 func NewToken(a adapter) *Token {
-	return &Token{"token_", a, true}
+	return &Token{a, true}
 }
 
 func (this *Token) NotUnique() {
 	this.isUnique = false
 }
 
-func (this *Token) SetPrefix(prefix string) {
-	this.prefix = prefix
-}
-
 // get uid from token
 func (this *Token) GetUid(token string) (int64, error) {
 
-	if str, err := this.adapter.Get(this.prefix + token); err != nil {
+	if str, err := this.adapter.Get(token); err != nil {
 		return 0, err
 	} else {
 		return strconv.ParseInt(str, 10, 0)
@@ -52,7 +47,7 @@ func (this *Token) AddToken(uid int64) (string, error) {
 		this.setUidToken(uid, token)
 	}
 
-	return token, this.adapter.Set(this.prefix+token, strconv.Itoa(int(uid)))
+	return token, this.adapter.Set(token, strconv.Itoa(int(uid)))
 }
 
 func (this *Token) setUidToken(uid int64, token string) error {
@@ -60,7 +55,7 @@ func (this *Token) setUidToken(uid int64, token string) error {
 	key := "uid_token_" + strconv.Itoa(int(uid))
 
 	if oldToken, err := this.adapter.Get(key); err == nil {
-		this.adapter.Delete(this.prefix + oldToken)
+		this.adapter.Delete(oldToken)
 	}
 
 	return this.adapter.Set(key, token)

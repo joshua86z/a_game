@@ -14,7 +14,7 @@ func (this *Connect) MailList() (error) {
 		result = append(result, mailProto(mail))
 	}
 
-	return this.Send(protodata.StatusCode_OK, &protodata.MailResponse{Mails: result})
+	return this.Send(StatusOK, &protodata.MailResponse{Mails: result})
 }
 
 func (this *Connect) MailRewardRequest() (error) {
@@ -51,7 +51,7 @@ func (this *Connect) MailRewardRequest() (error) {
 	response := &protodata.MailRewardResponse{
 		Role:   roleProto(this.Role),
 		Reward: &rewardPoto}
-	return this.Send(protodata.StatusCode_OK, response)
+	return this.Send(StatusOK, response)
 }
 
 func mailProto(mail *models.MailData) *protodata.MailData {

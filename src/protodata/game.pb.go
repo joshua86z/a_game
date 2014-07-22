@@ -244,27 +244,19 @@ func (m *BuyDiamondRequest) GetProductIndex() int32 {
 }
 
 type BuyDiamondResponse struct {
-	Role             *RoleData `protobuf:"bytes,1,opt,name=role" json:"role,omitempty"`
-	Diamond          *int32    `protobuf:"varint,2,opt,name=diamond" json:"diamond,omitempty"`
-	XXX_unrecognized []byte    `json:"-"`
+	OrderId          *string `protobuf:"bytes,1,opt,name=orderId" json:"orderId,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
 }
 
 func (m *BuyDiamondResponse) Reset()         { *m = BuyDiamondResponse{} }
 func (m *BuyDiamondResponse) String() string { return proto.CompactTextString(m) }
 func (*BuyDiamondResponse) ProtoMessage()    {}
 
-func (m *BuyDiamondResponse) GetRole() *RoleData {
-	if m != nil {
-		return m.Role
+func (m *BuyDiamondResponse) GetOrderId() string {
+	if m != nil && m.OrderId != nil {
+		return *m.OrderId
 	}
-	return nil
-}
-
-func (m *BuyDiamondResponse) GetDiamond() int32 {
-	if m != nil && m.Diamond != nil {
-		return *m.Diamond
-	}
-	return 0
+	return ""
 }
 
 // *************************************英雄升级**********************************
@@ -627,9 +619,10 @@ func (m *FightEndRequest) GetIsWin() bool {
 }
 
 type FightEndResponse struct {
-	Role             *RoleData   `protobuf:"bytes,1,opt,name=role" json:"role,omitempty"`
-	Reward           *RewardData `protobuf:"bytes,2,opt,name=reward" json:"reward,omitempty"`
-	XXX_unrecognized []byte      `json:"-"`
+	Role             *RoleData      `protobuf:"bytes,1,opt,name=role" json:"role,omitempty"`
+	Reward           *RewardData    `protobuf:"bytes,2,opt,name=reward" json:"reward,omitempty"`
+	Chapter          []*ChapterData `protobuf:"bytes,3,rep,name=chapter" json:"chapter,omitempty"`
+	XXX_unrecognized []byte         `json:"-"`
 }
 
 func (m *FightEndResponse) Reset()         { *m = FightEndResponse{} }
@@ -646,6 +639,13 @@ func (m *FightEndResponse) GetRole() *RoleData {
 func (m *FightEndResponse) GetReward() *RewardData {
 	if m != nil {
 		return m.Reward
+	}
+	return nil
+}
+
+func (m *FightEndResponse) GetChapter() []*ChapterData {
+	if m != nil {
+		return m.Chapter
 	}
 	return nil
 }

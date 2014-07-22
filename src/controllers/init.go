@@ -6,7 +6,7 @@ import (
 	"libs/log"
 	"libs/token"
 	_ "models"
-	"protodata"
+//	"protodata"
 	"runtime"
 	"sync"
 	"time"
@@ -60,10 +60,10 @@ func CountOnline() {
 	}()
 }
 
-func lineNum() protodata.StatusCode {
+func lineNum() int {
 	_, _, line, ok := runtime.Caller(1)
 	if ok {
-		return protodata.StatusCode(line)
+		return line
 	}
 	return -1
 }

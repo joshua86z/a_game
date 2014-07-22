@@ -51,7 +51,7 @@ func (this *Connect) ItemLevelUp() error {
 		Role: roleProto(this.Role),
 		Item: itemProto(item, config),
 	}
-	return this.Send(protodata.StatusCode_OK, response)
+	return this.Send(StatusOK, response)
 }
 
 func itemProtoList(itemList []*models.ItemData) []*protodata.ItemData {

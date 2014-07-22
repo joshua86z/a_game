@@ -22,11 +22,11 @@ type Connect struct {
 	Request *protodata.CommandRequest
 }
 
-func (this *Connect) Send(code protodata.StatusCode, value interface{}) error {
+func (this *Connect) Send(status int, value interface{}) error {
 	if _, ok := value.(error); ok {
-		log.Error("Error: %v", value)
+		log.Error(" %d %v", status, value)
 	}
-	this.Chan <- ReturnStr(this.Request, code, value)
+	this.Chan <- ReturnStr(this.Request, status, value)
 	this.Request = nil
 	return nil
 }
@@ -106,12 +106,12 @@ func (this *Connect) PullFromClient() {
 		if this.Request.GetCmdId() != LOGIN {
 			// Check Login status
 			if this.Request.GetTokenStr() == "" {
-				this.Send(protodata.StatusCode_INVALID_TOKEN, nil)
+				this.Send(2, nil)
 				continue
 			}
 			uid, _ := gameToken.GetUid(this.Request.GetTokenStr())
 			if uid == 0 {
-				this.Send(protodata.StatusCode_INVALID_TOKEN, nil)
+				this.Send(2, nil)
 				continue
 			} else {
 				if this.Role == nil {
@@ -129,7 +129,7 @@ func (this *Connect) PullFromClient() {
 					}
 
 				} else if this.Role.Uid != uid {
-					this.Send(protodata.StatusCode_INVALID_TOKEN, nil)
+					this.Send(2, nil)
 					continue
 				}
 			}
@@ -173,6 +173,8 @@ func (this *Connect) Function(index int32) func() error {
 		return this.BuyStaminaRequest
 	case 10108:
 		return this.BuyCoinRequest
+	case 10109:
+		return this.BuyDiamondRequest
 	case 10110:
 		return this.GeneralLevelUp
 	case 10111:

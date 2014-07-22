@@ -13,40 +13,6 @@ var _ = proto.Marshal
 var _ = &json.SyntaxError{}
 var _ = math.Inf
 
-// 系统执行状态码
-type StatusCode int32
-
-const (
-	StatusCode_OK            StatusCode = 1
-	StatusCode_INVALID_TOKEN StatusCode = 2
-)
-
-var StatusCode_name = map[int32]string{
-	1: "OK",
-	2: "INVALID_TOKEN",
-}
-var StatusCode_value = map[string]int32{
-	"OK":            1,
-	"INVALID_TOKEN": 2,
-}
-
-func (x StatusCode) Enum() *StatusCode {
-	p := new(StatusCode)
-	*p = x
-	return p
-}
-func (x StatusCode) String() string {
-	return proto.EnumName(StatusCode_name, int32(x))
-}
-func (x *StatusCode) UnmarshalJSON(data []byte) error {
-	value, err := proto.UnmarshalJSONEnum(StatusCode_value, data, "StatusCode")
-	if err != nil {
-		return err
-	}
-	*x = StatusCode(value)
-	return nil
-}
-
 type WebErrorType int32
 
 const (
@@ -90,6 +56,5 @@ func (x *WebErrorType) UnmarshalJSON(data []byte) error {
 }
 
 func init() {
-	proto.RegisterEnum("protodata.StatusCode", StatusCode_name, StatusCode_value)
 	proto.RegisterEnum("protodata.WebErrorType", WebErrorType_name, WebErrorType_value)
 }

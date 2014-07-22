@@ -7,7 +7,7 @@ import (
 	"libs/lua"
 )
 
-var db *gorp.DbMap
+var DB *gorp.DbMap
 
 func init() {
 
@@ -16,7 +16,7 @@ func init() {
 		panic(err)
 	}
 
-	db = Open(setting.GetString("dsn"))
+	DB = Open(setting.GetString("dsn"))
 
 	setting.Close()
 }
@@ -29,8 +29,4 @@ func Open(dsn string) *gorp.DbMap {
 	}
 
 	return &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
-}
-
-func DB() *gorp.DbMap {
-	return db
 }

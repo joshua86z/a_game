@@ -239,6 +239,7 @@ type ItemData struct {
 	ItemDesc         *string `protobuf:"bytes,3,opt,name=itemDesc" json:"itemDesc,omitempty"`
 	Level            *int32  `protobuf:"varint,4,opt,name=level" json:"level,omitempty"`
 	LevelUpCoin      *int32  `protobuf:"varint,5,opt,name=levelUpCoin" json:"levelUpCoin,omitempty"`
+	ItemValue        *int32  `protobuf:"varint,6,opt,name=itemValue" json:"itemValue,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -277,6 +278,13 @@ func (m *ItemData) GetLevel() int32 {
 func (m *ItemData) GetLevelUpCoin() int32 {
 	if m != nil && m.LevelUpCoin != nil {
 		return *m.LevelUpCoin
+	}
+	return 0
+}
+
+func (m *ItemData) GetItemValue() int32 {
+	if m != nil && m.ItemValue != nil {
+		return *m.ItemValue
 	}
 	return 0
 }
@@ -512,25 +520,18 @@ func (m *RewardData) GetStamina() int32 {
 
 // *****************************签到信息**********************************
 type SignRewardData struct {
-	SignIndex        *int32      `protobuf:"varint,1,opt,name=signIndex" json:"signIndex,omitempty"`
-	Reward           *RewardData `protobuf:"bytes,2,opt,name=reward" json:"reward,omitempty"`
-	IsReceive        *bool       `protobuf:"varint,3,opt,name=isReceive" json:"isReceive,omitempty"`
-	SignDay          *int32      `protobuf:"varint,4,opt,name=signDay" json:"signDay,omitempty"`
-	XXX_unrecognized []byte      `json:"-"`
+	// repeated int32 signIndex = 1;			//奖励id
+	Reward           []*RewardData `protobuf:"bytes,2,rep,name=reward" json:"reward,omitempty"`
+	IsReceive        *bool         `protobuf:"varint,3,opt,name=isReceive" json:"isReceive,omitempty"`
+	SignDay          *int32        `protobuf:"varint,4,opt,name=signDay" json:"signDay,omitempty"`
+	XXX_unrecognized []byte        `json:"-"`
 }
 
 func (m *SignRewardData) Reset()         { *m = SignRewardData{} }
 func (m *SignRewardData) String() string { return proto.CompactTextString(m) }
 func (*SignRewardData) ProtoMessage()    {}
 
-func (m *SignRewardData) GetSignIndex() int32 {
-	if m != nil && m.SignIndex != nil {
-		return *m.SignIndex
-	}
-	return 0
-}
-
-func (m *SignRewardData) GetReward() *RewardData {
+func (m *SignRewardData) GetReward() []*RewardData {
 	if m != nil {
 		return m.Reward
 	}

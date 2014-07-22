@@ -55,12 +55,12 @@ func (this *Connect) Login() error {
 	models.NewSignModel(UserModel.Uid)
 
 	response := &protodata.LoginResponse{TokenStr: proto.String(token)}
-	return this.Send(protodata.StatusCode_OK, response)
+	return this.Send(StatusOK, response)
 }
 
 func otherLogin(platId int, otherId string, session string, sign string, otherData string) (string, bool) {
 
-	Lua, err := lua.NewLua(fmt.Sprintf("lua/%d.lua", platId))
+	Lua, err := lua.NewLua(fmt.Sprintf("lua/plat_%d.lua", platId))
 	if err != nil {
 		log.Error("LUA ERROR : login.go line - 60")
 		return "0", false

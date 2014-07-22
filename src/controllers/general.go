@@ -40,7 +40,7 @@ func (this *Connect) BuyGeneral() error {
 		Role:    roleProto(this.Role),
 		General: generalProto(general, config),
 	}
-	return this.Send(protodata.StatusCode_OK, response)
+	return this.Send(StatusOK, response)
 }
 
 func (this *Connect) GeneralLevelUp() error {
@@ -73,7 +73,7 @@ func (this *Connect) GeneralLevelUp() error {
 		General: generalProto(general, config),
 	}
 
-	return this.Send(protodata.StatusCode_OK, response)
+	return this.Send(StatusOK, response)
 }
 
 func generalProtoList(generalList []*models.GeneralData) []*protodata.GeneralData {

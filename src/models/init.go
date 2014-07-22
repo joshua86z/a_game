@@ -10,7 +10,7 @@ func init() {
 }
 
 func DB() *gorp.DbMap {
-	return db.DB()
+	return db.DB
 }
 
 func DBError(err error) {

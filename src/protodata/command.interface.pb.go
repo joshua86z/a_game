@@ -102,21 +102,24 @@ func (m *CommandResponse) GetSerializedString() string {
 	return ""
 }
 
+// 1 成功
+// 2 TOKEN错误
+// 3 其它错误
 type StatusData struct {
-	SCode            *StatusCode `protobuf:"varint,1,req,name=sCode,enum=protodata.StatusCode" json:"sCode,omitempty"`
-	SStr             *string     `protobuf:"bytes,2,opt,name=sStr" json:"sStr,omitempty"`
-	XXX_unrecognized []byte      `json:"-"`
+	SCode            *int32  `protobuf:"varint,1,req,name=sCode" json:"sCode,omitempty"`
+	SStr             *string `protobuf:"bytes,2,opt,name=sStr" json:"sStr,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
 }
 
 func (m *StatusData) Reset()         { *m = StatusData{} }
 func (m *StatusData) String() string { return proto.CompactTextString(m) }
 func (*StatusData) ProtoMessage()    {}
 
-func (m *StatusData) GetSCode() StatusCode {
+func (m *StatusData) GetSCode() int32 {
 	if m != nil && m.SCode != nil {
 		return *m.SCode
 	}
-	return StatusCode_OK
+	return 0
 }
 
 func (m *StatusData) GetSStr() string {
@@ -127,21 +130,26 @@ func (m *StatusData) GetSStr() string {
 }
 
 // *************************************错误信息**********************************
+// 1001 网络超时
+// 1002 网络连接错误
+// 1003 未知错误
+// 1004 登陆错误
+// 1005 其他错误
 type ErrorResponse struct {
-	WebErrorType     *WebErrorType `protobuf:"varint,1,req,name=webErrorType,enum=protodata.WebErrorType" json:"webErrorType,omitempty"`
-	SStr             *string       `protobuf:"bytes,2,opt,name=sStr" json:"sStr,omitempty"`
-	XXX_unrecognized []byte        `json:"-"`
+	WebErrorType     *int32  `protobuf:"varint,1,req,name=webErrorType" json:"webErrorType,omitempty"`
+	SStr             *string `protobuf:"bytes,2,opt,name=sStr" json:"sStr,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
 }
 
 func (m *ErrorResponse) Reset()         { *m = ErrorResponse{} }
 func (m *ErrorResponse) String() string { return proto.CompactTextString(m) }
 func (*ErrorResponse) ProtoMessage()    {}
 
-func (m *ErrorResponse) GetWebErrorType() WebErrorType {
+func (m *ErrorResponse) GetWebErrorType() int32 {
 	if m != nil && m.WebErrorType != nil {
 		return *m.WebErrorType
 	}
-	return WebErrorType_Error_Socket_TIME_OUT
+	return 0
 }
 
 func (m *ErrorResponse) GetSStr() string {
