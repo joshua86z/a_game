@@ -8,7 +8,7 @@ import (
 
 type OrderModel struct {
 	OrderId    string `db:"order_id"`
-	Uid        int64  `db:"roles_unique"`
+	Uid        int64  `db:"uid"`
 	Rmb        int    `db:"order_rmb"`
 	Diamond    int    `db:"order_diamond"`
 	Status     int    `db:"order_status"` //0创建订单1付款成功2划账到游戏
@@ -69,7 +69,7 @@ func NewOrderModel(orderId string) (OrderModel, error) {
 //	return fmt.Sprintf("ORDERLOCK_%s", orderId)
 //}
 
-func (this OrderModel) Confirm() error {
+func (this OrderModel) Confirm(RoleModel *RoleModel) error {
 
 	if this.Status != 1 {
 		return fmt.Errorf("Order status not is '1' ")
@@ -88,14 +88,13 @@ func (this OrderModel) Confirm() error {
 		return err
 	}
 
-	RoleModel := NewRoleModel(this.Uid)
-
 	oldDiamond := RoleModel.Diamond
 	RoleModel.Diamond += this.Diamond
 	RoleModel.UnixTime = time.Now().Unix()
 
 	_, err = Transaction.Update(RoleModel)
 	if err != nil {
+		RoleModel.Diamond -= this.Diamond
 		Transaction.Rollback()
 		return err
 	}
@@ -103,6 +102,8 @@ func (this OrderModel) Confirm() error {
 	if Transaction.Commit() == nil {
 		Transaction.Rollback()
 		return err
+	} else {
+		RoleModel.Diamond -= this.Diamond
 	}
 
 	InsertSubDiamondFinanceLog(this.Uid, BUY_DIAMOND, oldDiamond, RoleModel.Diamond, fmt.Sprintf("diamond: %d -> %d", oldDiamond, RoleModel.Diamond))

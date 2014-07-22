@@ -2,12 +2,10 @@ package controllers
 
 import (
 	"code.google.com/p/go.net/websocket"
-	"encoding/json"
 	"fmt"
 	"libs/log"
 	"models"
 	"protodata"
-	"strings"
 	"time"
 )
 
@@ -83,8 +81,7 @@ func (this *Connect) PullFromClient() {
 			}
 		}()
 
-		// receive from ws Connect
-		var content string
+		var content []byte
 		err := websocket.Message.Receive(this.Conn, &content)
 		if err != nil {
 			if err.Error() == "EOF" {
@@ -95,22 +92,14 @@ func (this *Connect) PullFromClient() {
 			return
 		}
 
-		// **************** 其它接口 **************** //
-		if strings.HasPrefix(content, "20140709_allhero_") {
-			this.OtherRequest([]byte(strings.Replace(content, "20140709_allhero_", "", len(content))))
-			return
-		}
-		// **************** 支付专用 **************** //
-
 		beginTime := time.Now()
 		log.Info(" Begin ")
 
 		// parse proto message
-
 		this.Request, err = ParseContent(content)
 		if err != nil {
 			log.Error("Parse client request error. %v", err)
-			this.Send(lineNum(), fmt.Sprintf("%v", err))
+			this.Send(lineNum(), err)
 			continue
 		}
 
@@ -154,7 +143,7 @@ func (this *Connect) PullFromClient() {
 		this.Function(this.Request.GetCmdId())()
 
 		execTime := time.Now().Sub(beginTime)
-		if int(execTime.Seconds()) > 1 {
+		if execTime.Seconds() > 0.1 {
 			// slow log
 			log.Warn("Slow Exec , time is %v second", execTime.Seconds())
 		} else {
@@ -194,23 +183,13 @@ func (this *Connect) Function(index int32) func() error {
 		return this.MailRewardRequest
 	case 10114:
 		return this.ItemLevelUp
+	case 10115:
+		return this.BattleRequest
+	case 10116:
+		return this.BattleResult
 	default:
 		return func() error {
 			return this.Send(lineNum(), fmt.Sprintf("没有这方法 index : %d", index))
-		}
-	}
-}
-
-func (this *Connect) OtherRequest(request []byte) {
-
-	data := make(map[string]string)
-	json.Unmarshal(request, &data)
-
-	if data["cmd"] == "9000" {
-		if OrderModel, err := models.NewOrderModel(data["orderId"]); err != nil {
-			log.Error("Pay Error %v", err)
-		} else {
-			OrderModel.Confirm()
 		}
 	}
 }

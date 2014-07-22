@@ -24,10 +24,10 @@ type DuplicateModel struct {
 
 func NewDuplicateModel(uid int64) *DuplicateModel {
 
-	var Duplicate DuplicateModel
+	Duplicate := new(DuplicateModel)
 
 	var temp []*DuplicateData
-	_, err := DB().Select(&temp, "SELECT * FROM role_duplicates WHERE uid = ?  ", uid)
+	_, err := DB().Select(&temp, "SELECT * FROM role_duplicates WHERE uid = ? ", uid)
 	if err != nil {
 		DBError(err)
 	}
@@ -35,7 +35,7 @@ func NewDuplicateModel(uid int64) *DuplicateModel {
 	Duplicate.Uid = uid
 	Duplicate.DuplicateList = temp
 
-	return &Duplicate
+	return Duplicate
 }
 
 func (this *DuplicateModel) List() []*DuplicateData {

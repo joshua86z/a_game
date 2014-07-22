@@ -59,8 +59,8 @@ func Return(r *protodata.CommandRequest, code *protodata.StatusCode, obj interfa
 //}
 
 // Parse ws receive content to CommandRequest
-func ParseContent(content string) (*protodata.CommandRequest, error) {
+func ParseContent(content []byte) (*protodata.CommandRequest, error) {
 
 	request := &protodata.CommandRequest{}
-	return request, proto.Unmarshal([]byte(content), request)
+	return request, proto.Unmarshal(content, request)
 }
