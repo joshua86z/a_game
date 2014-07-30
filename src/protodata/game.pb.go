@@ -506,13 +506,14 @@ func (m *FightInitRequest) GetTempItems() []int32 {
 }
 
 type FightInitResponse struct {
-	SceneId          *int32    `protobuf:"varint,1,opt,name=sceneId" json:"sceneId,omitempty"`
-	SceneType        *int32    `protobuf:"varint,2,opt,name=sceneType" json:"sceneType,omitempty"`
-	WinType          *int32    `protobuf:"varint,3,opt,name=winType" json:"winType,omitempty"`
-	PointsNum        *int32    `protobuf:"varint,4,opt,name=pointsNum" json:"pointsNum,omitempty"`
-	BattleData       *string   `protobuf:"bytes,5,opt,name=battleData" json:"battleData,omitempty"`
-	ChestData        *string   `protobuf:"bytes,6,opt,name=chestData" json:"chestData,omitempty"`
-	Role             *RoleData `protobuf:"bytes,7,opt,name=role" json:"role,omitempty"`
+	// 	optional int32 sceneId = 1;		//场景id 1:城市,2:沙漠,3:冰川
+	// 	optional int32 sceneType = 2;		//场景类型 1:中间障碍,2:怪物障碍,3:巨型障碍
+	// 	optional int32 winType = 3;		//过关方式 1:宝箱,2:普通,3,计时
+	// 	optional int32 pointsNum = 4;		//过关总进度数
+	// 	optional string chestData = 6;		//宝箱关卡数据
+	Role             *RoleData `protobuf:"bytes,1,opt,name=role" json:"role,omitempty"`
+	FightMode        *int32    `protobuf:"varint,2,opt,name=fightMode" json:"fightMode,omitempty"`
+	BattleData       *string   `protobuf:"bytes,3,opt,name=battleData" json:"battleData,omitempty"`
 	XXX_unrecognized []byte    `json:"-"`
 }
 
@@ -520,30 +521,16 @@ func (m *FightInitResponse) Reset()         { *m = FightInitResponse{} }
 func (m *FightInitResponse) String() string { return proto.CompactTextString(m) }
 func (*FightInitResponse) ProtoMessage()    {}
 
-func (m *FightInitResponse) GetSceneId() int32 {
-	if m != nil && m.SceneId != nil {
-		return *m.SceneId
+func (m *FightInitResponse) GetRole() *RoleData {
+	if m != nil {
+		return m.Role
 	}
-	return 0
+	return nil
 }
 
-func (m *FightInitResponse) GetSceneType() int32 {
-	if m != nil && m.SceneType != nil {
-		return *m.SceneType
-	}
-	return 0
-}
-
-func (m *FightInitResponse) GetWinType() int32 {
-	if m != nil && m.WinType != nil {
-		return *m.WinType
-	}
-	return 0
-}
-
-func (m *FightInitResponse) GetPointsNum() int32 {
-	if m != nil && m.PointsNum != nil {
-		return *m.PointsNum
+func (m *FightInitResponse) GetFightMode() int32 {
+	if m != nil && m.FightMode != nil {
+		return *m.FightMode
 	}
 	return 0
 }
@@ -555,23 +542,9 @@ func (m *FightInitResponse) GetBattleData() string {
 	return ""
 }
 
-func (m *FightInitResponse) GetChestData() string {
-	if m != nil && m.ChestData != nil {
-		return *m.ChestData
-	}
-	return ""
-}
-
-func (m *FightInitResponse) GetRole() *RoleData {
-	if m != nil {
-		return m.Role
-	}
-	return nil
-}
-
 // *************************************战斗结算**********************************
 type FightEndRequest struct {
-	LeaderGenId      *int32 `protobuf:"varint,1,opt,name=leaderGenId" json:"leaderGenId,omitempty"`
+	GeneralId        *int32 `protobuf:"varint,1,opt,name=generalId" json:"generalId,omitempty"`
 	KillNum          *int32 `protobuf:"varint,2,opt,name=killNum" json:"killNum,omitempty"`
 	CoinNum          *int32 `protobuf:"varint,3,opt,name=coinNum" json:"coinNum,omitempty"`
 	DiamondNum       *int32 `protobuf:"varint,4,opt,name=diamondNum" json:"diamondNum,omitempty"`
@@ -583,9 +556,9 @@ func (m *FightEndRequest) Reset()         { *m = FightEndRequest{} }
 func (m *FightEndRequest) String() string { return proto.CompactTextString(m) }
 func (*FightEndRequest) ProtoMessage()    {}
 
-func (m *FightEndRequest) GetLeaderGenId() int32 {
-	if m != nil && m.LeaderGenId != nil {
-		return *m.LeaderGenId
+func (m *FightEndRequest) GetGeneralId() int32 {
+	if m != nil && m.GeneralId != nil {
+		return *m.GeneralId
 	}
 	return 0
 }

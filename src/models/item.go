@@ -67,11 +67,10 @@ func (this *ItemData) LevelUpCoin() int {
 
 func (this *ItemModel) Insert(config *ConfigItem) *ItemData {
 
-	item := &ItemData{}
+	item := new(ItemData)
 	item.Uid = this.Uid
 	item.ConfigId = config.ConfigId
 	item.Name = config.Name
-	item.Level = 1
 	item.UnixTime = time.Now().Unix()
 
 	if err := DB().Insert(item); err != nil {

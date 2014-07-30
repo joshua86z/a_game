@@ -65,7 +65,7 @@ func (this *GeneralModel) Insert(config *ConfigGeneral) *GeneralData {
 	general.Uid = this.Uid
 	general.ConfigId = config.ConfigId
 	general.Name = config.Name
-	general.Level = 1
+	general.Level = 0
 	general.Atk = config.Atk
 	general.Def = config.Def
 	general.Hp = config.Hp

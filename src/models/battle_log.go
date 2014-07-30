@@ -14,7 +14,7 @@ const (
 )
 
 func init() {
-	DB().AddTableWithName(BattleLogModel{}, "battle_log").SetKeys(true, "Id")
+	DB().AddTableWithName(BattleLogModel{}, "battle_logs").SetKeys(true, "Id")
 }
 
 // battle_log
@@ -26,7 +26,7 @@ type BattleLogModel struct {
 	GeneralId int        `db:"general_id"`
 	Type      BattleType `db:"battle_type"`
 	KillNum   int        `db:"battle_kill_num"`
-	Result    bool       `db:"battle_result"`
+	Result    int        `db:"battle_result"`
 	Time      int64      `db:"battle_time"`
 }
 
@@ -45,12 +45,21 @@ func NewBattleLogModel(battle_id int) *BattleLogModel {
 	}
 }
 
-func (this *BattleLogModel) Win(killNum int) error {
+func (this *BattleLogModel) SetResult(isWin bool, killNum int) error {
 
-	this.Result = true
 	this.KillNum = killNum
 	this.Time = time.Now().Unix()
-
+	if isWin {
+		this.Result = 2
+	} else {
+		this.Result = 1
+	}
 	_, err := DB().Update(this)
 	return err
+}
+
+func LastBattleLog(uid int64) *BattleLogModel {
+	battleLog := new(BattleLogModel)
+	DB().SelectOne(battleLog, "SELECT * FROM battle_log WHERE uid = ? ORDER BY battle_id DESC LIMIT 1", uid)
+	return battleLog
 }

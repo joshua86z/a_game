@@ -16,6 +16,7 @@ type UserModel struct {
 	Uid      int64  `db:"uid"`
 	UserName string `db:"username"`
 	Password string `db:"password"`
+	Ip       string `db:"ip"`
 	OtherId  string `db:"other_id"`
 	PlatId   int    `db:"plat_id"`
 	RegTime  int64  `db:"reg_time"`
@@ -32,7 +33,7 @@ func (this UserModel) Insert() error {
 
 func GetUserByName(name string) *UserModel {
 
-	UserModel := &UserModel{}
+	UserModel := new(UserModel)
 
 	str := "SELECT * FROM " + UserModel.tableName() + " WHERE username = ? LIMIT 1"
 	if err := DB().SelectOne(UserModel, str, name); err != nil {
@@ -48,7 +49,7 @@ func GetUserByName(name string) *UserModel {
 
 func NewUserModel(uid int64) *UserModel {
 
-	UserModel := &UserModel{}
+	UserModel := new(UserModel)
 
 	err := DB().SelectOne(UserModel, "SELECT * FROM "+UserModel.tableName()+" WHERE uid = ? LIMIT 1", uid)
 	if err != nil {
@@ -60,11 +61,11 @@ func NewUserModel(uid int64) *UserModel {
 
 func GetUserByOtherId(otherId string, platId int) *UserModel {
 
-	UserModel := &UserModel{}
+	UserModel := new(UserModel)
 
 	err := DB().SelectOne(UserModel, "SELECT * FROM "+UserModel.tableName()+" WHERE other_id = ? AND plat_id = ? LIMIT 1", otherId, platId)
 	if err == sql.ErrNoRows {
-		return UserModel
+		return nil
 	} else {
 		panic(err)
 	}

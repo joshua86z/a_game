@@ -40,11 +40,11 @@ func (this *Connect) MailRewardRequest() (error) {
 	} else {
 		if mail.Coin > 0 {
 			rewardPoto.RewardCoin = proto.Int32(int32(mail.Coin))
-			this.Role.AddCoin(mail.Coin, models.MAIL_GET, fmt.Sprintf("mailId : %d", mail.Id))
+			this.Role.AddCoin(mail.Coin, models.FINANCE_MAIL_GET, fmt.Sprintf("mailId : %d", mail.Id))
 		}
 		if mail.Diamond > 0 {
 			rewardPoto.RewardDiamond = proto.Int32(int32(mail.Diamond))
-			this.Role.AddDiamond(mail.Diamond, models.MAIL_GET, fmt.Sprintf("mailId : %d", mail.Id))
+			this.Role.AddDiamond(mail.Diamond, models.FINANCE_MAIL_GET, fmt.Sprintf("mailId : %d", mail.Id))
 		}
 	}
 

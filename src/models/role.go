@@ -13,13 +13,19 @@ func init() {
 
 // role
 type RoleModel struct {
-	Uid         int64  `db:"uid"`
-	Name        string `db:"role_name"`
-	Coin        int    `db:"role_coin"`
-	Diamond     int    `db:"role_diamond"`
-	OtherAction int    `db:"role_other_action"`
-	ActionTime  int64  `db:"role_action_time"` // 上次体力更新时间
-	UnixTime    int64  `db:"role_time"`
+	Uid             int64  `db:"uid"`
+	Name            string `db:"role_name"`
+	Coin            int    `db:"role_coin"`
+	Diamond         int    `db:"role_diamond"`
+	OtherAction     int    `db:"role_other_action"`
+	ActionTime      int64  `db:"role_action_time"` // 上次体力更新时间
+	UnlimitedMaxNum int    `db:"role_unlimited_max_num"`
+	UnlimitedNum    int    `db:"role_unlimited_num"`
+	KillNum         int    `db:"role_kill_num"`
+	SignDate        string `db:"role_sign_date"`
+	SignTimes       int    `db:"role_sign_times"`
+	GeneralConfigId int    `db:"general_config_id"`
+	UnixTime        int64  `db:"role_time"`
 }
 
 func (this RoleModel) tableName() string {
@@ -72,9 +78,6 @@ func (this *RoleModel) SetName(name string) error {
 	this.Name = name
 	this.UnixTime = time.Now().Unix()
 	_, err := DB().Update(this)
-	if err != nil {
-		this = nil
-	}
 	return err
 }
 
@@ -91,6 +94,8 @@ func (this *RoleModel) ActionValue() int {
 
 func (this *RoleModel) SetActionValue(n int) error {
 
+	RoleModel := *this
+
 	if n > MaxActionValue {
 		this.OtherAction = n - MaxActionValue
 		n = MaxActionValue
@@ -103,12 +108,14 @@ func (this *RoleModel) SetActionValue(n int) error {
 
 	_, err := DB().Update(this)
 	if err != nil {
-		this = nil
+		this = &RoleModel
 	}
 	return err
 }
 
 func (this *RoleModel) BuyActionValue(diamond int, n int) error {
+
+	RoleModel := *this
 
 	if n > MaxActionValue {
 		this.OtherAction = n - MaxActionValue
@@ -126,9 +133,9 @@ func (this *RoleModel) BuyActionValue(diamond int, n int) error {
 
 	_, err := DB().Update(this)
 	if err == nil {
-		InsertSubDiamondFinanceLog(this.Uid, BUY_ACTION, oldDiamond, this.Diamond, fmt.Sprintf("%d -> %d", oldAction, n))
+		InsertSubDiamondFinanceLog(this.Uid, FINANCE_BUY_ACTION, oldDiamond, this.Diamond, fmt.Sprintf("%d -> %d", oldAction, n))
 	} else {
-		this = nil
+		this = &RoleModel
 	}
 	return err
 }
@@ -150,7 +157,7 @@ func (this *RoleModel) AddCoin(n int, finance_type FinanceType, desc string) err
 
 	_, err := DB().Update(this)
 	if err == nil {
-		InsertSubDiamondFinanceLog(this.Uid, finance_type, oldMoney, this.Coin, desc)
+		InsertAddDiamondFinanceLog(this.Uid, finance_type, oldMoney, this.Coin, desc)
 	} else {
 		this.Coin -= n
 	}
@@ -184,7 +191,7 @@ func (this *RoleModel) AddDiamond(n int, finance_type FinanceType, desc string) 
 
 	_, err := DB().Update(this)
 	if err == nil {
-		InsertSubDiamondFinanceLog(this.Uid, finance_type, oldMoney, this.Diamond, desc)
+		InsertAddDiamondFinanceLog(this.Uid, finance_type, oldMoney, this.Diamond, desc)
 	} else {
 		this.Diamond -= n
 	}
@@ -211,8 +218,7 @@ func (this *RoleModel) SubDiamond(n int, finance_type FinanceType, desc string) 
 
 func (this *RoleModel) DiamondIntoCoin(diamond int, coin int, desc string) error {
 
-	oldDiamond := this.Diamond
-	oldCoin := this.Coin
+	oldCoin, oldDiamond := this.Coin, this.Diamond
 
 	this.Diamond -= diamond
 	this.Coin += coin
@@ -220,11 +226,90 @@ func (this *RoleModel) DiamondIntoCoin(diamond int, coin int, desc string) error
 
 	_, err := DB().Update(this)
 	if err == nil {
-		InsertSubDiamondFinanceLog(this.Uid, BUY_COIN, oldDiamond, this.Diamond, desc)
-		InsertAddCoinFinanceLog(this.Uid, BUY_COIN, oldCoin, this.Coin, desc)
+		InsertSubDiamondFinanceLog(this.Uid, FINANCE_BUY_COIN, oldDiamond, this.Diamond, desc)
+		InsertAddCoinFinanceLog(this.Uid, FINANCE_BUY_COIN, oldCoin, this.Coin, desc)
 	} else {
-		this.Diamond += oldDiamond
-		this.Coin += oldCoin
+		this.Coin, this.Diamond = oldCoin, oldDiamond
+	}
+
+	return err
+}
+
+func (this *RoleModel) SetGeneralConfigId(configId int) error {
+
+	temp := this.GeneralConfigId
+	this.GeneralConfigId = configId
+	this.UnixTime = time.Now().Unix()
+
+	_, err := DB().Update(this)
+	if err != nil {
+		this.GeneralConfigId = temp
+	}
+	return err
+}
+
+func (this *RoleModel) AddKillNum(num int, coin int, diamond int, desc string) error {
+
+	killNum, oldCoin, oldDiamond := this.KillNum, this.Coin, this.Diamond
+
+	this.KillNum += num
+	this.Coin += coin
+	this.Diamond += diamond
+	this.UnixTime = time.Now().Unix()
+
+	_, err := DB().Update(this)
+	if err != nil {
+		this.KillNum, this.Coin, this.Diamond = killNum, oldCoin, oldDiamond
+	} else {
+		if coin > 0 {
+			InsertAddCoinFinanceLog(this.Uid, FINANCE_DUPLICATE_GET, oldCoin, this.Coin, desc)
+		}
+		if diamond > 0 {
+			InsertAddDiamondFinanceLog(this.Uid, FINANCE_DUPLICATE_GET, oldDiamond, this.Diamond, desc)
+		}
+	}
+	return err
+}
+
+func (this *RoleModel) SetUnlimitedNum(num int) error {
+
+	temp1, temp2 := this.UnlimitedNum, this.UnlimitedMaxNum
+
+	this.UnixTime = time.Now().Unix()
+	this.UnlimitedNum = num
+	if num > this.UnlimitedMaxNum {
+		this.UnlimitedMaxNum = num
+	}
+
+	_, err := DB().Update(this)
+	if err != nil {
+		this.UnlimitedNum, this.UnlimitedMaxNum = temp1, temp2
+	}
+	return err
+}
+
+func (this *RoleModel) Sign() error {
+
+	temp1 := this.SignDate
+	temp2 := this.SignTimes
+	now := time.Now()
+	this.UnixTime = now.Unix()
+	if this.SignDate == now.Format("20060102") {
+		return nil
+	}
+
+	if this.SignDate == now.AddDate(0, 0, -1).Format("20060102") {
+		this.SignTimes++
+	} else {
+		this.SignTimes = 1
+	}
+
+	this.SignDate = now.Format("20060102")
+
+	_, err := DB().Update(this)
+	if err != nil {
+		this.SignDate = temp1
+		this.SignTimes = temp2
 	}
 
 	return err

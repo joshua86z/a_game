@@ -107,12 +107,13 @@ type GeneralData struct {
 	Dex         *int32  `protobuf:"varint,9,opt,name=dex" json:"dex,omitempty"`
 	TriggerR    *int32  `protobuf:"varint,10,opt,name=triggerR" json:"triggerR,omitempty"`
 	AtkR        *int32  `protobuf:"varint,11,opt,name=atkR" json:"atkR,omitempty"`
-	// 	optional int32 atkType = 12;			//攻击类型1近程 2远程 3炸弹
-	GeneralType      *int32 `protobuf:"varint,13,opt,name=generalType" json:"generalType,omitempty"`
-	BuyDiamond       *int32 `protobuf:"varint,14,opt,name=buyDiamond" json:"buyDiamond,omitempty"`
-	LevelUpCoin      *int32 `protobuf:"varint,15,opt,name=levelUpCoin" json:"levelUpCoin,omitempty"`
-	IsUnlock         *bool  `protobuf:"varint,16,opt,name=isUnlock" json:"isUnlock,omitempty"`
-	KillNum          *int32 `protobuf:"varint,17,opt,name=killNum" json:"killNum,omitempty"`
+	SkillAtk    *int32  `protobuf:"varint,12,opt,name=skillAtk" json:"skillAtk,omitempty"`
+	// 	optional int32 atkType = 13;			//攻击类型1近程 2远程 3炸弹
+	GeneralType      *int32 `protobuf:"varint,14,opt,name=generalType" json:"generalType,omitempty"`
+	BuyDiamond       *int32 `protobuf:"varint,15,opt,name=buyDiamond" json:"buyDiamond,omitempty"`
+	LevelUpCoin      *int32 `protobuf:"varint,16,opt,name=levelUpCoin" json:"levelUpCoin,omitempty"`
+	IsUnlock         *bool  `protobuf:"varint,17,opt,name=isUnlock" json:"isUnlock,omitempty"`
+	KillNum          *int32 `protobuf:"varint,18,opt,name=killNum" json:"killNum,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -197,6 +198,13 @@ func (m *GeneralData) GetAtkR() int32 {
 	return 0
 }
 
+func (m *GeneralData) GetSkillAtk() int32 {
+	if m != nil && m.SkillAtk != nil {
+		return *m.SkillAtk
+	}
+	return 0
+}
+
 func (m *GeneralData) GetGeneralType() int32 {
 	if m != nil && m.GeneralType != nil {
 		return *m.GeneralType
@@ -240,6 +248,7 @@ type ItemData struct {
 	Level            *int32  `protobuf:"varint,4,opt,name=level" json:"level,omitempty"`
 	LevelUpCoin      *int32  `protobuf:"varint,5,opt,name=levelUpCoin" json:"levelUpCoin,omitempty"`
 	ItemValue        *int32  `protobuf:"varint,6,opt,name=itemValue" json:"itemValue,omitempty"`
+	ItemPro          *int32  `protobuf:"varint,7,opt,name=itemPro" json:"itemPro,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -285,6 +294,13 @@ func (m *ItemData) GetLevelUpCoin() int32 {
 func (m *ItemData) GetItemValue() int32 {
 	if m != nil && m.ItemValue != nil {
 		return *m.ItemValue
+	}
+	return 0
+}
+
+func (m *ItemData) GetItemPro() int32 {
+	if m != nil && m.ItemPro != nil {
+		return *m.ItemPro
 	}
 	return 0
 }

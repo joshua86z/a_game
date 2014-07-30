@@ -8,19 +8,25 @@ import (
 	"models"
 	"protodata"
 	"strings"
+	"time"
 )
 
 func (this *Connect) UserDataRequest() error {
 
-	SignModel := models.NewSignModel(this.Role.Uid)
-	signDay := SignModel.Times % 7
+	signDay := this.Role.SignTimes % 7
 	if signDay == 0 {
 		signDay = 7
 	}
 
-	isReceive := SignModel.Reward
+	var isReceive bool
+	if this.Role.SignDate == time.Now().Format("20060102") {
+		isReceive = true
+	}
 	if !isReceive {
-		SignModel.GetReward()
+		if err := this.Role.Sign(); err != nil {
+			return this.Send(lineNum(), err)
+		}
+		//		SignModel.GetReward()
 	}
 
 	var rewardList []*protodata.RewardData
@@ -34,7 +40,7 @@ func (this *Connect) UserDataRequest() error {
 	signProto := &protodata.SignRewardData{
 		Reward:    rewardList,
 		IsReceive: proto.Bool(isReceive),
-		SignDay: proto.Int32(int32(signDay)),
+		SignDay:   proto.Int32(int32(signDay)),
 	}
 
 	var coinProductProtoList []*protodata.CoinProductData
@@ -61,12 +67,25 @@ func (this *Connect) UserDataRequest() error {
 		})
 	}
 
+	GeneralModel := models.NewGeneralModel(this.Uid)
+	if len(GeneralModel.List()) == 0 {
+		Lua, _ := lua.NewLua("conf/new_role.lua")
+		s := Lua.GetString("init_generals")
+		Lua.Close()
+		fmt.Println(s)
+		array := strings.Split(s, ",")
+		configs := models.ConfigGeneralMap()
+		GeneralModel.Insert(configs[models.Atoi(array[0])])
+		GeneralModel.Insert(configs[models.Atoi(array[1])])
+		GeneralModel.Insert(configs[models.Atoi(array[2])])
+	}
+
 	response := &protodata.UserDataResponse{
 		Role:             roleProto(this.Role),
-		Items:            itemProtoList(models.NewItemModel(this.Role.Uid).List()),
-		Generals:         generalProtoList(models.NewGeneralModel(this.Role.Uid).List()),
+		Items:            itemProtoList(models.NewItemModel(this.Uid).List()),
+		Generals:         generalProtoList(GeneralModel.List()),
 		SignReward:       signProto,
-		Chapters:         getDuplicateProto(models.NewDuplicateModel(this.Role.Uid)),
+		Chapters:         duplicateProtoList(models.NewDuplicateModel(this.Uid).List()),
 		TempItemDiamonds: []int32{5, 5, 5, 5},
 		CoinProducts:     coinProductProtoList,
 		DiamondProducts:  productProtoList}
@@ -153,7 +172,7 @@ func roleProto(RoleModel *models.RoleModel) *protodata.RoleData {
 
 	var roleData protodata.RoleData
 	roleData.RoleId = proto.Int64(RoleModel.Uid)
-	roleData.RoleName = proto.String("")
+	roleData.RoleName = proto.String(RoleModel.Name)
 	roleData.Stamina = proto.Int32(int32(RoleModel.ActionValue()))
 	roleData.MaxStamina = proto.Int32(int32(models.MaxActionValue))
 	roleData.Coin = proto.Int32(int32(RoleModel.Coin))

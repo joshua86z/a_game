@@ -51,11 +51,11 @@ func (this *DuplicateModel) GetDuplicate(duplicateId int) *DuplicateData {
 	return nil
 }
 
-func InsertDuplicate(uid int64, chapter int, section int) *DuplicateData {
+func (this *DuplicateModel) Insert(chapter int, section int) *DuplicateData {
 
 	duplicate := &DuplicateData{}
 
-	duplicate.Uid = uid
+	duplicate.Uid = this.Uid
 	duplicate.Chapter = chapter
 	duplicate.Section = section
 	duplicate.UnixTime = time.Now().Unix()

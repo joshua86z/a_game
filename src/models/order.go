@@ -106,7 +106,7 @@ func (this OrderModel) Confirm(RoleModel *RoleModel) error {
 		RoleModel.Diamond -= this.Diamond
 	}
 
-	InsertSubDiamondFinanceLog(this.Uid, BUY_DIAMOND, oldDiamond, RoleModel.Diamond, fmt.Sprintf("diamond: %d -> %d", oldDiamond, RoleModel.Diamond))
+	InsertSubDiamondFinanceLog(this.Uid, FINANCE_BUY_DIAMOND, oldDiamond, RoleModel.Diamond, fmt.Sprintf("diamond: %d -> %d", oldDiamond, RoleModel.Diamond))
 
 	return nil
 }

@@ -55,17 +55,12 @@ func (this *MailModel) Mail(mailId int) *MailData {
 	return nil
 }
 
-func InsertMail(mail *MailData) *MailData {
-
-	mail.UnixTime = time.Now().Unix()
-	if err := DB().Insert(mail); err != nil {
-		DBError(err)
-	}
-
-	return mail
-}
-
 func DeleteMail(mailId int) error {
 	_, err := DB().Exec("DELETE FROM role_mails WHERE mail_id = ? ", mailId)
 	return err
+}
+
+func SendMail(mail *MailData) error {
+	mail.UnixTime = time.Now().Unix()
+	return DB().Insert(mail)
 }

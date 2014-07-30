@@ -6,7 +6,7 @@ import (
 	"protodata"
 )
 
-func getDuplicateProto(duplicate *models.DuplicateModel) []*protodata.ChapterData {
+func duplicateProtoList(duplicates []*models.DuplicateData) []*protodata.ChapterData {
 
 	list := models.ConfigDuplicateList()
 
@@ -28,7 +28,7 @@ func getDuplicateProto(duplicate *models.DuplicateModel) []*protodata.ChapterDat
 
 		var find bool
 		if index > 0 {
-			for _, d := range duplicate.List() {
+			for _, d := range duplicates {
 				if d.Chapter == list[index-1].Chapter && d.Section == list[index-1].Section {
 					find = true
 					break

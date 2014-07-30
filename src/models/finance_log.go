@@ -6,20 +6,22 @@ import (
 )
 
 func init() {
-	DB().AddTableWithName(finance{}, "role_finance_log").SetKeys(true, "Id")
+	DB().AddTableWithName(finance{}, "role_finance_logs").SetKeys(true, "Id")
 }
 
 type FinanceType int
 
 const (
 	_ FinanceType = iota
-	BUY_DIAMOND
-	BUY_ACTION
-	BUY_GENERAL
-	BUY_COIN
-	ITEM_LEVELUP
-	GENERAL_LEVELUP
-	MAIL_GET
+	FINANCE_BUY_DIAMOND
+	FINANCE_BUY_ACTION
+	FINANCE_BUY_GENERAL
+	FINANCE_BUY_COIN
+	FINANCE_ITEM_LEVELUP
+	FINANCE_GENERAL_LEVELUP
+	FINANCE_MAIL_GET
+	FINANCE_DUPLICATE_GET
+	FINANCE_ADMIN
 )
 
 type finance struct {
@@ -45,14 +47,15 @@ func init() {
 	go checkfinanceChan()
 
 	financeStrMap = make(map[FinanceType]string)
-	financeStrMap[BUY_DIAMOND] = "充值"
-	financeStrMap[BUY_ACTION] = "买体力"
-	financeStrMap[BUY_GENERAL] = "买英雄"
-	financeStrMap[BUY_COIN] = "兑换金币"
-	financeStrMap[ITEM_LEVELUP] = "道具升级"
-	financeStrMap[GENERAL_LEVELUP] = "英雄升级"
-	financeStrMap[MAIL_GET] = "邮件领取"
-
+	financeStrMap[FINANCE_BUY_DIAMOND] = "充值"
+	financeStrMap[FINANCE_BUY_ACTION] = "买体力"
+	financeStrMap[FINANCE_BUY_GENERAL] = "买英雄"
+	financeStrMap[FINANCE_BUY_COIN] = "兑换金币"
+	financeStrMap[FINANCE_ITEM_LEVELUP] = "道具升级"
+	financeStrMap[FINANCE_GENERAL_LEVELUP] = "英雄升级"
+	financeStrMap[FINANCE_MAIL_GET] = "邮件领取"
+	financeStrMap[FINANCE_DUPLICATE_GET] = "副本获得"
+	financeStrMap[FINANCE_ADMIN] = "内部添加"
 }
 
 func checkfinanceChan() {

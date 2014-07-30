@@ -18,28 +18,41 @@ func (this *Connect) Login() error {
 		return this.Send(lineNum(), err)
 	}
 
+	platId := int(request.GetPlatId())
+	ip := request.GetIp()
 	username := request.GetUsername()
 	password := request.GetPassword()
 	otherId := request.GetOtherId()
-	platId := int(request.GetPlatId())
+	otherData := request.GetOtherData()
+	session := request.GetOtherSession()
+	sign := request.GetOtherSign()
 
-	m := md5.New()
-	m.Write([]byte(password))
-	password = hex.EncodeToString(m.Sum(nil))
+	var UserModel *models.UserModel
+	if otherId != "" && platId > 0 {
+		otherId, b := otherLogin(platId, otherId, session, sign, otherData)
+		if !b {
+			return this.Send(lineNum(), fmt.Errorf("第三方验证错误"))
+		}
+		UserModel = models.GetUserByOtherId(otherId, platId)
+	} else {
+		m := md5.New()
+		m.Write([]byte(password))
+		password = hex.EncodeToString(m.Sum(nil))
+		UserModel = models.GetUserByName(username)
+		if UserModel != nil && UserModel.Password != password {
+			return this.Send(lineNum(), fmt.Errorf("密码错误"))
+		}
+	}
 
-	UserModel := models.GetUserByName(username)
 	if UserModel == nil {
-		UserModel = &models.UserModel{}
+		UserModel = new(models.UserModel)
 		UserModel.UserName = username
 		UserModel.Password = password
 		UserModel.OtherId = otherId
+		UserModel.Ip = ip
 		UserModel.PlatId = platId
 		if err := UserModel.Insert(); err != nil {
 			return this.Send(lineNum(), err)
-		}
-	} else {
-		if password != UserModel.Password {
-			return this.Send(lineNum(), fmt.Errorf("密码错误"))
 		}
 	}
 
@@ -52,13 +65,11 @@ func (this *Connect) Login() error {
 	this.InMap(UserModel.Uid)
 	this.Role = models.NewRoleModel(UserModel.Uid)
 
-	models.NewSignModel(UserModel.Uid)
-
 	response := &protodata.LoginResponse{TokenStr: proto.String(token)}
 	return this.Send(StatusOK, response)
 }
 
-func otherLogin(platId int, otherId string, session string, sign string, otherData string) (string, bool) {
+func otherLogin(platId int, otherId, session, sign, otherData string) (string, bool) {
 
 	Lua, err := lua.NewLua(fmt.Sprintf("lua/plat_%d.lua", platId))
 	if err != nil {

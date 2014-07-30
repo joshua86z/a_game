@@ -3,8 +3,10 @@ package main
 import (
 	"code.google.com/p/go.net/websocket"
 	"controllers"
+	"fmt"
 	"libs/lua"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 )
@@ -23,6 +25,7 @@ func main() {
 
 	http.Handle("/", websocket.Server{Handler: controllers.Handler})
 	if err := http.ListenAndServe(":"+strconv.Itoa(port), nil); err != nil {
-		panic(err)
+		fmt.Println("Panic: ", err)
+		os.Exit(1)
 	}
 }

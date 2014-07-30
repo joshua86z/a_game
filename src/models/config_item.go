@@ -6,48 +6,17 @@ import (
 	"strings"
 )
 
-//var (
-//	item_config_map  map[int]*ConfigItem
-//	item_config_list []*ConfigItem
-//)
-//
-//func init() {
-//	var temp []*ConfigItem
-//	if _, err := DB().Select(&temp, "SELECT * FROM config_item"); err != nil {
-//		panic(err)
-//	}
-//	item_config_map = make(map[int]*ConfigItem)
-//	for _, item := range temp {
-//		item_config_map[item.ConfigId] = item
-//	}
-//}
-
-// config_item
-type ConfigItem struct {
-	ConfigId int    `db:"item_config_id"`
-	Name     string `db:"item_name"`
-	Desc     string `db:"item_desc"`
+func init() {
+	ConfigItemList()
 }
 
-func ConfigItemMap() map[int]*ConfigItem {
-
-	result := make(map[int]*ConfigItem)
-
-	Lua, _ := lua.NewLua("conf/item.lua")
-	var i int
-	for {
-		i++
-		itemStr := Lua.GetString(fmt.Sprintf("item_%d", i))
-		if itemStr == "" {
-			break
-		}
-		array := strings.Split(itemStr, "\\,")
-		result[i] = &ConfigItem{i, array[0], array[1]}
-	}
-
-	Lua.Close()
-
-	return result
+type ConfigItem struct {
+	ConfigId    int
+	Name        string
+	Desc        string
+	Value       int
+	Group       int
+	Probability int
 }
 
 func ConfigItemList() []*ConfigItem {
@@ -63,7 +32,13 @@ func ConfigItemList() []*ConfigItem {
 			break
 		}
 		array := strings.Split(itemStr, "\\,")
-		result = append(result, &ConfigItem{i, array[0], array[1]})
+		result = append(result, &ConfigItem{
+			ConfigId:    Atoi(array[0]),
+			Name:        array[1],
+			Desc:        array[2],
+			Value:       Atoi(array[3]),
+			Group:       Atoi(array[4]),
+			Probability: Atoi(array[5])})
 	}
 
 	Lua.Close()

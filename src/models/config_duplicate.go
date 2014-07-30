@@ -3,17 +3,12 @@ package models
 import (
 	"fmt"
 	"libs/lua"
-	"strconv"
 	"strings"
 )
 
-//var duplicate_config_list []*ConfigDuplicate
-//
-//func init() {
-//	if _, err := DB().Select(&duplicate_config_list, "SELECT * FROM config_duplicate ORDER BY duplicate_config_id ASC "); err != nil {
-//		panic(err)
-//	}
-//}
+func init() {
+	ConfigDuplicateList()
+}
 
 // config_duplicate
 type ConfigDuplicate struct {
@@ -22,9 +17,7 @@ type ConfigDuplicate struct {
 	Section     int    `db:"duplicate_section"`
 	ChapterName string `db:"duplicate_chapter_name"`
 	SectionName string `db:"duplicate_section_name"`
-	NPC         string `db:"duplicate_npc"`
-	Items       string `db:"duplicate_items"`
-	Generals    string `db:"duplicate_generals"`
+	Value       string `db:"duplicate_value"`
 	ChapterDesc string `db:"duplicate_chapter_desc"`
 	SectionDesc string `db:"duplicate_section_desc"`
 }
@@ -42,20 +35,15 @@ func ConfigDuplicateList() []*ConfigDuplicate {
 			break
 		}
 		array := strings.Split(duplicateStr, "\\,")
-		chapter, _ := strconv.Atoi(array[0])
-		section, _ := strconv.Atoi(array[1])
 		result = append(result, &ConfigDuplicate{
 			ConfigId:    i,
-			Chapter:     chapter,
-			Section:     section,
+			Chapter:     Atoi(array[0]),
+			Section:     Atoi(array[1]),
 			ChapterName: array[2],
 			SectionName: array[3],
-			NPC:         array[4],
-			Items:       array[5],
-			Generals:    array[6],
-			ChapterDesc: array[7],
-			SectionDesc: array[8],
-		})
+			Value:       array[4],
+			ChapterDesc: array[5],
+			SectionDesc: array[6]})
 	}
 
 	Lua.Close()
