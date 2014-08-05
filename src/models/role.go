@@ -6,9 +6,14 @@ import (
 	"time"
 )
 
+const (
+	MaxActionValue int = 5
+	ActionWaitTime int = 1800
+)
+
 func init() {
 	var RoleModel RoleModel
-	DB().AddTableWithName(RoleModel, RoleModel.tableName()).SetKeys(false, "Uid")
+	DB().AddTableWithName(RoleModel, "role").SetKeys(false, "Uid")
 }
 
 // role
@@ -24,18 +29,16 @@ type RoleModel struct {
 	KillNum         int    `db:"role_kill_num"`
 	SignDate        string `db:"role_sign_date"`
 	SignTimes       int    `db:"role_sign_times"`
+	BuyActionDate   string `db:"role_buy_action_date"` // 购买体力日期
+	BuyActionNum    int    `db:"role_buy_action_num"`  // 购买体力次数
 	GeneralConfigId int    `db:"general_config_id"`
 	UnixTime        int64  `db:"role_time"`
 }
 
-func (this RoleModel) tableName() string {
-	return "role"
-}
-
 func NewRoleModel(uid int64) *RoleModel {
 
-	RoleModel := &RoleModel{}
-	if err := DB().SelectOne(RoleModel, "SELECT * FROM "+RoleModel.tableName()+" WHERE uid = ?", uid); err != nil {
+	RoleModel := new(RoleModel)
+	if err := DB().SelectOne(RoleModel, "SELECT * FROM role WHERE uid = ?", uid); err != nil {
 		if err == sql.ErrNoRows {
 			return nil
 			//			RoleModel.Uid = uid
@@ -68,11 +71,6 @@ func NumberByRoleName(name string) int64 {
 	}
 	return n
 }
-
-const (
-	MaxActionValue int = 5
-	ActionWaitTime int = 1800
-)
 
 func (this *RoleModel) SetName(name string) error {
 	this.Name = name
@@ -310,6 +308,29 @@ func (this *RoleModel) Sign() error {
 	if err != nil {
 		this.SignDate = temp1
 		this.SignTimes = temp2
+	}
+
+	return err
+}
+
+func (this *RoleModel) UpdateDate() error {
+
+	now := time.Now()
+	if this.BuyActionDate == now.Format("20060102") {
+		return nil
+	}
+
+	temp1 := this.BuyActionDate
+	temp2 := this.BuyActionNum
+
+	this.UnixTime = now.Unix()
+	this.BuyActionDate = now.Format("20060102")
+	this.BuyActionNum = 0
+
+	_, err := DB().Update(this)
+	if err != nil {
+		this.BuyActionDate = temp1
+		this.BuyActionNum = temp2
 	}
 
 	return err

@@ -13,6 +13,7 @@ type FinanceType int
 
 const (
 	_ FinanceType = iota
+	FINANCE_ADMIN
 	FINANCE_BUY_DIAMOND
 	FINANCE_BUY_ACTION
 	FINANCE_BUY_GENERAL
@@ -20,8 +21,9 @@ const (
 	FINANCE_ITEM_LEVELUP
 	FINANCE_GENERAL_LEVELUP
 	FINANCE_MAIL_GET
+	FINANCE_DUPLICATE_USE
 	FINANCE_DUPLICATE_GET
-	FINANCE_ADMIN
+	FINANCE_SIGN_GET
 )
 
 type finance struct {
@@ -42,11 +44,11 @@ var (
 )
 
 func init() {
-
 	financeChan = make(chan *finance, 1000)
 	go checkfinanceChan()
 
 	financeStrMap = make(map[FinanceType]string)
+	financeStrMap[FINANCE_ADMIN] = "内部添加"
 	financeStrMap[FINANCE_BUY_DIAMOND] = "充值"
 	financeStrMap[FINANCE_BUY_ACTION] = "买体力"
 	financeStrMap[FINANCE_BUY_GENERAL] = "买英雄"
@@ -54,8 +56,9 @@ func init() {
 	financeStrMap[FINANCE_ITEM_LEVELUP] = "道具升级"
 	financeStrMap[FINANCE_GENERAL_LEVELUP] = "英雄升级"
 	financeStrMap[FINANCE_MAIL_GET] = "邮件领取"
+	financeStrMap[FINANCE_DUPLICATE_USE] = "临时道具"
 	financeStrMap[FINANCE_DUPLICATE_GET] = "副本获得"
-	financeStrMap[FINANCE_ADMIN] = "内部添加"
+	financeStrMap[FINANCE_SIGN_GET] = "签到"
 }
 
 func checkfinanceChan() {

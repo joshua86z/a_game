@@ -3,21 +3,30 @@ package controllers
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"fmt"
+	"libs/lua"
 	"models"
 	"protodata"
 )
 
-func (this *Connect) MailList() (error) {
+func (this *Connect) MailList() error {
 
 	var result []*protodata.MailData
 	for _, mail := range models.NewMailModel(this.Role.Uid).List() {
 		result = append(result, mailProto(mail))
 	}
 
-	return this.Send(StatusOK, &protodata.MailResponse{Mails: result})
+	Lua, _ := lua.NewLua("conf/notice.lua")
+	content := Lua.GetString("content")
+	datetime := Lua.GetString("datetime")
+	Lua.Close()
+
+	return this.Send(StatusOK, &protodata.MailResponse{
+		Mails:        result,
+		Cnnouncement: proto.String(content),
+		Time:         proto.String(datetime)})
 }
 
-func (this *Connect) MailRewardRequest() (error) {
+func (this *Connect) MailRewardRequest() error {
 
 	request := &protodata.MailRewardRequest{}
 	if err := Unmarshal(this.Request.GetSerializedString(), request); err != nil {
@@ -37,14 +46,16 @@ func (this *Connect) MailRewardRequest() (error) {
 		if err := this.Role.SetActionValue(this.Role.ActionValue() + mail.ActionValue); err != nil {
 			return this.Send(lineNum(), err)
 		}
+		rewardPoto.Stamina = proto.Int32(int32(mail.ActionValue))
 	} else {
 		if mail.Coin > 0 {
-			rewardPoto.RewardCoin = proto.Int32(int32(mail.Coin))
 			this.Role.AddCoin(mail.Coin, models.FINANCE_MAIL_GET, fmt.Sprintf("mailId : %d", mail.Id))
+			rewardPoto.RewardCoin = proto.Int32(int32(mail.Coin))
 		}
+		rewardPoto.RewardCoin = proto.Int32(int32(mail.Coin))
 		if mail.Diamond > 0 {
-			rewardPoto.RewardDiamond = proto.Int32(int32(mail.Diamond))
 			this.Role.AddDiamond(mail.Diamond, models.FINANCE_MAIL_GET, fmt.Sprintf("mailId : %d", mail.Id))
+			rewardPoto.RewardDiamond = proto.Int32(int32(mail.Diamond))
 		}
 	}
 

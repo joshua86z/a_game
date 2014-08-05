@@ -16,14 +16,15 @@ func (this *Connect) BattleRequest() error {
 
 	chapterId := int(request.GetChapterId())
 	sectionId := int(request.GetSectionId())
+	tempItemList := request.GetTempItems()
 
 	var (
 		c, s   int
 		config *models.ConfigDuplicate
 	)
 
+	configs := models.ConfigDuplicateList()
 	if chapterId != 1 || sectionId != 1 {
-		configs := models.ConfigDuplicateList()
 		for index, val := range configs {
 			if val.Chapter > chapterId {
 				break
@@ -54,15 +55,32 @@ func (this *Connect) BattleRequest() error {
 			return this.Send(lineNum(), fmt.Errorf("你还没有解锁这个关卡"))
 		}
 	} else {
-
+		c, s = configs[0].Chapter, configs[0].Section
+		config = configs[0]
 	}
 
-	var BattleLogModel models.BattleLogModel
+	// 是否使用临时道具
+	if len(tempItemList) > 0 {
+		tempItemCoin := tempItemCoin()
+		var coin int
+		desc := "use items: "
+		for index := range tempItemList {
+			if tempItemList[index] > 0 {
+				coin += tempItemCoin[index]
+				desc += fmt.Sprintf("%d , ", index+1)
+			}
+		}
+		if err := this.Role.SubCoin(coin, models.FINANCE_DUPLICATE_USE, desc); err != nil {
+			return this.Send(lineNum(), err)
+		}
+	}
+
+	BattleLogModel := new(models.BattleLogModel)
 	BattleLogModel.Uid = this.Uid
 	BattleLogModel.Chapter = chapterId
 	BattleLogModel.Section = sectionId
 	BattleLogModel.Type = models.BattleType(request.GetFightMode())
-	if err := models.InsertBattleLog(&BattleLogModel); err != nil {
+	if err := models.InsertBattleLog(BattleLogModel); err != nil {
 		return this.Send(lineNum(), err)
 	}
 

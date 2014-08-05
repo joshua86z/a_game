@@ -78,6 +78,7 @@ func (this *Connect) PullFromClient() {
 			if err := recover(); err != nil {
 				log.Critical("Panic occur. %v", err)
 				this.Send(lineNum(), fmt.Sprintf("%v", err))
+				this.PullFromClient()
 			}
 		}()
 
@@ -117,7 +118,7 @@ func (this *Connect) PullFromClient() {
 				if this.Role == nil {
 					this.Role = models.NewRoleModel(uid)
 					if this.Role == nil {
-						this.Role = &models.RoleModel{}
+						this.Role = new(models.RoleModel)
 						this.Role.Uid = uid
 						this.Role.Coin = 0
 						this.Role.Diamond = 0
@@ -131,6 +132,8 @@ func (this *Connect) PullFromClient() {
 				} else if this.Role.Uid != uid {
 					this.Send(2, nil)
 					continue
+				} else {
+					this.Role.UpdateDate()
 				}
 			}
 			this.InMap(uid)

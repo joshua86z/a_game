@@ -117,3 +117,11 @@ func levelUpCoinMap() map[int]int {
 
 	return result
 }
+
+func tempItemCoin() [4]int {
+	Lua, _ := lua.NewLua("conf/item.lua")
+	s := Lua.GetString("temp_item_coin")
+	Lua.Close()
+	tempItemCoin := strings.Split(s, ",")
+	return [4]int{models.Atoi(tempItemCoin[0]), models.Atoi(tempItemCoin[1]), models.Atoi(tempItemCoin[2]), models.Atoi(tempItemCoin[3])}
+}
