@@ -23,12 +23,22 @@ func (this *Connect) UserDataRequest() error {
 		}
 	}
 
+	configs := models.ConfigGeneralMap()
+
 	var rewardList []*protodata.RewardData
-	for i := 1; i <= 7; i++ {
-		var temp protodata.RewardData
-		temp.RewardCoin = proto.Int32(5)
-		temp.RewardDiamond = proto.Int32(5)
-		rewardList = append(rewardList, &temp)
+	for i := this.Role.SignTimes; i < this.Role.SignTimes+7; i++ {
+
+		c, d, s, g := signReward(i)
+
+		temp := new(protodata.RewardData)
+		temp.RewardCoin = proto.Int32(int32(c))
+		temp.RewardDiamond = proto.Int32(int32(d))
+		temp.Stamina = proto.Int32(int32(s))
+		if g > 0 {
+			temp.General = generalProto(new(models.GeneralData), configs[g])
+		}
+
+		rewardList = append(rewardList, temp)
 	}
 
 	signDay := this.Role.SignTimes % 7
@@ -68,11 +78,10 @@ func (this *Connect) UserDataRequest() error {
 
 	GeneralModel := models.NewGeneralModel(this.Uid)
 	if len(GeneralModel.List()) == 0 {
-		Lua, _ := lua.NewLua("conf/new_role.lua")
+		Lua, _ := lua.NewLua("conf/general.lua")
 		s := Lua.GetString("init_generals")
 		Lua.Close()
 		array := strings.Split(s, ",")
-		configs := models.ConfigGeneralMap()
 		GeneralModel.Insert(configs[models.Atoi(array[0])])
 		GeneralModel.Insert(configs[models.Atoi(array[1])])
 		GeneralModel.Insert(configs[models.Atoi(array[2])])
@@ -94,7 +103,7 @@ func (this *Connect) UserDataRequest() error {
 					break
 				}
 			}
-			config := models.ConfigGeneralMap()[generalId]
+			config := configs[generalId]
 			if find {
 				this.Role.AddDiamond(config.BuyDiamond, models.FINANCE_SIGN_GET, fmt.Sprintf("signDay : %d", signDay))
 			} else {
@@ -108,12 +117,13 @@ func (this *Connect) UserDataRequest() error {
 	response := &protodata.UserDataResponse{
 		Role:             roleProto(this.Role),
 		Items:            itemProtoList(models.NewItemModel(this.Uid).List()),
-		Generals:         generalProtoList(GeneralModel.List()),
+		Generals:         generalProtoList(GeneralModel.List(), configs),
 		SignReward:       signProto,
 		Chapters:         duplicateProtoList(models.NewDuplicateModel(this.Uid).List()),
 		TempItemDiamonds: []int32{int32(tempItemCoin[0]), int32(tempItemCoin[1]), int32(tempItemCoin[2]), int32(tempItemCoin[3])},
 		CoinProducts:     coinProductProtoList,
-		DiamondProducts:  productProtoList}
+		DiamondProducts:  productProtoList,
+		LeaderId:         proto.Int32(int32(this.Role.GeneralConfigId))}
 
 	return this.Send(StatusOK, response)
 }
@@ -175,7 +185,7 @@ func (this *Connect) SetRoleName() error {
 	}
 
 	// 判断是否存在此用户名
-	if n := models.NumberByRoleName(name); n > 0 {
+	if n := models.Role.NumberByRoleName(name); n > 0 {
 		return this.Send(lineNum(), fmt.Errorf("这个名字已被使用"))
 	}
 
@@ -188,7 +198,7 @@ func (this *Connect) SetRoleName() error {
 
 func (this *Connect) BuyStaminaRequest() error {
 
-	if this.Role.ActionValue() >= models.MaxActionValue {
+	if this.Role.ActionValue() >= models.Role.MaxActionValue {
 		return this.Send(lineNum(), fmt.Errorf("体力已满"))
 	}
 
@@ -198,7 +208,7 @@ func (this *Connect) BuyStaminaRequest() error {
 	}
 
 	this.Role.BuyActionNum += 1
-	err := this.Role.BuyActionValue(needDiamond, models.MaxActionValue)
+	err := this.Role.BuyActionValue(needDiamond, models.Role.MaxActionValue)
 	if err != nil {
 		this.Role.BuyActionNum -= 1
 		return this.Send(lineNum(), err)
@@ -209,13 +219,13 @@ func (this *Connect) BuyStaminaRequest() error {
 		Stamina: proto.Int32((5))})
 }
 
-func roleProto(RoleModel *models.RoleModel) *protodata.RoleData {
+func roleProto(RoleModel *models.RoleData) *protodata.RoleData {
 
 	return &protodata.RoleData{
 		RoleId:            proto.Int64(RoleModel.Uid),
 		RoleName:          proto.String(RoleModel.Name),
 		Stamina:           proto.Int32(int32(RoleModel.ActionValue())),
-		MaxStamina:        proto.Int32(int32(models.MaxActionValue)),
+		MaxStamina:        proto.Int32(int32(models.Role.MaxActionValue)),
 		Coin:              proto.Int32(int32(RoleModel.Coin)),
 		Diamond:           proto.Int32(int32(RoleModel.Diamond)),
 		SuppleStaminaTime: proto.Int32(int32(RoleModel.ActionRecoverTime())),
@@ -232,14 +242,14 @@ func buyActionDiamond(n int) int {
 	return diamond
 }
 
-func signReward(times int) (int, int, int, int) {
+func signReward(times int) (coin, diamond, action, generalId int) {
 	Lua, _ := lua.NewLua("conf/sign_reward.lua")
 	Lua.L.GetGlobal("signReward")
 	Lua.L.DoString(fmt.Sprintf("coin, diamond, action, generalId = signReward(%d)", times))
-	coin := Lua.GetInt("coin")
-	diamond := Lua.GetInt("diamond")
-	action := Lua.GetInt("action")
-	generalId := Lua.GetInt("generalId")
+	coin = Lua.GetInt("coin")
+	diamond = Lua.GetInt("diamond")
+	action = Lua.GetInt("action")
+	generalId = Lua.GetInt("generalId")
 	Lua.Close()
-	return coin, diamond, action, generalId
+	return
 }

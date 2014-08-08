@@ -27,43 +27,43 @@ func (this *Connect) Login() error {
 	session := request.GetOtherSession()
 	sign := request.GetOtherSign()
 
-	var UserModel *models.UserModel
+	var user *models.UserData
 	if otherId != "" && platId > 0 {
 		otherId, b := otherLogin(platId, otherId, session, sign, otherData)
 		if !b {
 			return this.Send(lineNum(), fmt.Errorf("第三方验证错误"))
 		}
-		UserModel = models.GetUserByOtherId(otherId, platId)
+		user = models.User.GetUserByOtherId(otherId, platId)
 	} else {
 		m := md5.New()
 		m.Write([]byte(password))
 		password = hex.EncodeToString(m.Sum(nil))
-		UserModel = models.GetUserByName(username)
-		if UserModel != nil && UserModel.Password != password {
+		user = models.User.GetUserByName(username)
+		if user != nil && user.Password != password {
 			return this.Send(lineNum(), fmt.Errorf("密码错误"))
 		}
 	}
 
-	if UserModel == nil {
-		UserModel = new(models.UserModel)
-		UserModel.UserName = username
-		UserModel.Password = password
-		UserModel.OtherId = otherId
-		UserModel.Ip = ip
-		UserModel.PlatId = platId
-		if err := UserModel.Insert(); err != nil {
+	if user == nil {
+		user = new(models.UserData)
+		user.UserName = username
+		user.Password = password
+		user.OtherId = otherId
+		user.Ip = ip
+		user.PlatId = platId
+		if err := user.Insert(); err != nil {
 			return this.Send(lineNum(), err)
 		}
 	}
 
-	token, err := gameToken.AddToken(UserModel.Uid)
+	token, err := gameToken.AddToken(user.Uid)
 	if err != nil {
 		return this.Send(lineNum(), err)
 	}
 
-	log.Info("Exec -> login (uid:%d)", UserModel.Uid)
-	this.InMap(UserModel.Uid)
-	this.Role = models.NewRoleModel(UserModel.Uid)
+	log.Info("Exec -> login (uid:%d)", user.Uid)
+	this.InMap(user.Uid)
+	this.Role = models.Role.Role(user.Uid)
 
 	response := &protodata.LoginResponse{TokenStr: proto.String(token)}
 	return this.Send(StatusOK, response)

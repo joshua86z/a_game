@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"libs/log"
 	"libs/token"
-	_ "models"
-//	"protodata"
+	"math/rand"
 	"runtime"
 	"sync"
 	"time"
@@ -21,6 +20,7 @@ var (
 )
 
 func init() {
+	rand.Seed(time.Now().UnixNano())
 	gameToken = token.NewToken(&token.Adapter{})
 	playerMap = make(map[int64]*Connect)
 	request_log_map = make(map[int32]string)

@@ -18,7 +18,17 @@ func (this *Connect) ItemLevelUp() error {
 
 	configId := int(request.GetItemId())
 
-	config := models.ConfigItemList()[configId-1]
+	var config *models.ConfigItem
+	for _, c := range models.ConfigItemList() {
+		if c.ConfigId == configId {
+			config = c
+			break
+		}
+	}
+	if config == nil {
+		return this.Send(lineNum(), fmt.Errorf("参数错误:没有这个道具Id:%d", configId))
+	}
+
 	ItemModel := models.NewItemModel(this.Role.Uid)
 
 	var coin, level int
@@ -29,11 +39,11 @@ func (this *Connect) ItemLevelUp() error {
 		level = item.Level
 	}
 
-	if level >= 5 {
+	if level >= len(config.LevelUpCoin)-1 {
 		return this.Send(lineNum(), fmt.Errorf("道具已经最大等级"))
 	}
 
-	coin = levelUpCoinMap()[level]
+	coin = config.LevelUpCoin[level]
 	if coin > this.Role.Coin {
 		return this.Send(lineNum(), fmt.Errorf("金币不足"))
 	}
@@ -62,61 +72,49 @@ func (this *Connect) ItemLevelUp() error {
 
 func itemProtoList(itemList []*models.ItemData) []*protodata.ItemData {
 
-	m := levelUpCoinMap()
-
 	var result []*protodata.ItemData
 	for _, config := range models.ConfigItemList() {
 
-		itemData := new(protodata.ItemData)
-		itemData.ItemId = proto.Int32(int32(config.ConfigId))
-		itemData.ItemName = proto.String(config.Name)
-		itemData.ItemDesc = proto.String(config.Desc)
-		itemData.LevelUpCoin = proto.Int32(int32(m[0]))
-		itemData.ItemValue = proto.Int32(int32(config.Value))
-		itemData.ItemPro = proto.Int32(int32(config.Probability))
-
+		var find bool
 		for _, item := range itemList {
 			if item.ConfigId == config.ConfigId {
-				itemData.Level = proto.Int32(int32(item.Level))
-				itemData.LevelUpCoin = proto.Int32(int32(m[item.Level]))
-				itemData.ItemValue = proto.Int32(int32(config.Value + item.Level*config.Group))
+				find = true
+				result = append(result, itemProto(item, config))
 				break
 			}
 		}
-
-		result = append(result, itemData)
+		if !find {
+			result = append(result, itemProto(new(models.ItemData), config))
+		}
 	}
 	return result
 }
 
 func itemProto(item *models.ItemData, config *models.ConfigItem) *protodata.ItemData {
 
-	m := levelUpCoinMap()
-
-	itemData := new(protodata.ItemData)
-	itemData.ItemId = proto.Int32(int32(config.ConfigId))
-	itemData.ItemName = proto.String(config.Name)
-	itemData.ItemDesc = proto.String(config.Desc)
-	itemData.ItemValue = proto.Int32(int32(config.Value + item.Level*config.Group))
-	itemData.ItemPro = proto.Int32(int32(config.Probability))
-	itemData.Level = proto.Int32(int32(item.Level))
-	itemData.LevelUpCoin = proto.Int32(int32(m[item.Level]))
-	return itemData
+	return &protodata.ItemData{
+		ItemId:      proto.Int32(int32(config.ConfigId)),
+		ItemName:    proto.String(config.Name),
+		ItemDesc:    proto.String(config.Desc),
+		ItemValue:   proto.Int32(int32(config.Value + item.Level*config.Group)),
+		ItemPro:     proto.Int32(int32(config.Probability)),
+		Level:       proto.Int32(int32(item.Level)),
+		LevelUpCoin: proto.Int32(int32(config.LevelUpCoin[item.Level]))}
 }
 
-func levelUpCoinMap() map[int]int {
-
-	Lua, _ := lua.NewLua("conf/item.lua")
-	s := Lua.GetString("levelUp")
-	array := strings.Split(s, ",")
-
-	result := make(map[int]int)
-	for index, val := range array {
-		result[index] = models.Atoi(val)
-	}
-
-	return result
-}
+//func levelUpCoinMap() map[int]int {
+//
+//	Lua, _ := lua.NewLua("conf/item.lua")
+//	s := Lua.GetString("levelUp")
+//	array := strings.Split(s, ",")
+//
+//	result := make(map[int]int)
+//	for index, val := range array {
+//		result[index] = models.Atoi(val)
+//	}
+//
+//	return result
+//}
 
 func tempItemCoin() [4]int {
 	Lua, _ := lua.NewLua("conf/item.lua")

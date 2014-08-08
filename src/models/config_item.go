@@ -17,6 +17,7 @@ type ConfigItem struct {
 	Value       int
 	Group       int
 	Probability int
+	LevelUpCoin []int
 }
 
 func ConfigItemList() []*ConfigItem {
@@ -24,6 +25,12 @@ func ConfigItemList() []*ConfigItem {
 	var result []*ConfigItem
 
 	Lua, _ := lua.NewLua("conf/item.lua")
+	var coinList []int //升级需要的金币
+	levelUpCoin := Lua.GetString("level_up_coin")
+	for _, val := range strings.Split(levelUpCoin, ",") {
+		coinList = append(coinList, Atoi(val))
+	}
+
 	var i int
 	for {
 		i++
@@ -38,10 +45,10 @@ func ConfigItemList() []*ConfigItem {
 			Desc:        array[2],
 			Value:       Atoi(array[3]),
 			Group:       Atoi(array[4]),
-			Probability: Atoi(array[5])})
+			Probability: Atoi(array[5]),
+			LevelUpCoin: coinList})
 	}
 
 	Lua.Close()
-
 	return result
 }

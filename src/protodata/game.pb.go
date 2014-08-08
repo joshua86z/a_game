@@ -31,6 +31,7 @@ type UserDataResponse struct {
 	TempItemDiamonds []int32               `protobuf:"varint,6,rep,name=tempItemDiamonds" json:"tempItemDiamonds,omitempty"`
 	CoinProducts     []*CoinProductData    `protobuf:"bytes,7,rep,name=coinProducts" json:"coinProducts,omitempty"`
 	DiamondProducts  []*DiamondProductData `protobuf:"bytes,8,rep,name=diamondProducts" json:"diamondProducts,omitempty"`
+	LeaderId         *int32                `protobuf:"varint,9,opt,name=leaderId" json:"leaderId,omitempty"`
 	XXX_unrecognized []byte                `json:"-"`
 }
 
@@ -90,6 +91,87 @@ func (m *UserDataResponse) GetCoinProducts() []*CoinProductData {
 func (m *UserDataResponse) GetDiamondProducts() []*DiamondProductData {
 	if m != nil {
 		return m.DiamondProducts
+	}
+	return nil
+}
+
+func (m *UserDataResponse) GetLeaderId() int32 {
+	if m != nil && m.LeaderId != nil {
+		return *m.LeaderId
+	}
+	return 0
+}
+
+// *************************************设置队长**********************************
+type SetLeaderRequest struct {
+	LeaderId         *int32 `protobuf:"varint,1,opt,name=leaderId" json:"leaderId,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
+}
+
+func (m *SetLeaderRequest) Reset()         { *m = SetLeaderRequest{} }
+func (m *SetLeaderRequest) String() string { return proto.CompactTextString(m) }
+func (*SetLeaderRequest) ProtoMessage()    {}
+
+func (m *SetLeaderRequest) GetLeaderId() int32 {
+	if m != nil && m.LeaderId != nil {
+		return *m.LeaderId
+	}
+	return 0
+}
+
+type SetLeaderResponse struct {
+	LeaderId         *int32 `protobuf:"varint,1,opt,name=leaderId" json:"leaderId,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
+}
+
+func (m *SetLeaderResponse) Reset()         { *m = SetLeaderResponse{} }
+func (m *SetLeaderResponse) String() string { return proto.CompactTextString(m) }
+func (*SetLeaderResponse) ProtoMessage()    {}
+
+func (m *SetLeaderResponse) GetLeaderId() int32 {
+	if m != nil && m.LeaderId != nil {
+		return *m.LeaderId
+	}
+	return 0
+}
+
+// *************************************获取签到信息(签到)**********************************
+type SignRewardRequest struct {
+	XXX_unrecognized []byte `json:"-"`
+}
+
+func (m *SignRewardRequest) Reset()         { *m = SignRewardRequest{} }
+func (m *SignRewardRequest) String() string { return proto.CompactTextString(m) }
+func (*SignRewardRequest) ProtoMessage()    {}
+
+type SignRewardResponse struct {
+	SignReward       *SignRewardData `protobuf:"bytes,1,opt,name=signReward" json:"signReward,omitempty"`
+	Role             *RoleData       `protobuf:"bytes,2,opt,name=role" json:"role,omitempty"`
+	General          *GeneralData    `protobuf:"bytes,3,opt,name=general" json:"general,omitempty"`
+	XXX_unrecognized []byte          `json:"-"`
+}
+
+func (m *SignRewardResponse) Reset()         { *m = SignRewardResponse{} }
+func (m *SignRewardResponse) String() string { return proto.CompactTextString(m) }
+func (*SignRewardResponse) ProtoMessage()    {}
+
+func (m *SignRewardResponse) GetSignReward() *SignRewardData {
+	if m != nil {
+		return m.SignReward
+	}
+	return nil
+}
+
+func (m *SignRewardResponse) GetRole() *RoleData {
+	if m != nil {
+		return m.Role
+	}
+	return nil
+}
+
+func (m *SignRewardResponse) GetGeneral() *GeneralData {
+	if m != nil {
+		return m.General
 	}
 	return nil
 }
@@ -621,6 +703,88 @@ func (m *FightEndResponse) GetChapter() []*ChapterData {
 		return m.Chapter
 	}
 	return nil
+}
+
+// *************************************获取好友列表**********************************
+type FriendListRequest struct {
+	SnsIds           []string `protobuf:"bytes,1,rep,name=snsIds" json:"snsIds,omitempty"`
+	PlatId           *int32   `protobuf:"varint,2,opt,name=platId" json:"platId,omitempty"`
+	XXX_unrecognized []byte   `json:"-"`
+}
+
+func (m *FriendListRequest) Reset()         { *m = FriendListRequest{} }
+func (m *FriendListRequest) String() string { return proto.CompactTextString(m) }
+func (*FriendListRequest) ProtoMessage()    {}
+
+func (m *FriendListRequest) GetSnsIds() []string {
+	if m != nil {
+		return m.SnsIds
+	}
+	return nil
+}
+
+func (m *FriendListRequest) GetPlatId() int32 {
+	if m != nil && m.PlatId != nil {
+		return *m.PlatId
+	}
+	return 0
+}
+
+type FriendListResponse struct {
+	FriendList1      []*FriendData `protobuf:"bytes,1,rep,name=friendList1" json:"friendList1,omitempty"`
+	FriendList2      []*FriendData `protobuf:"bytes,2,rep,name=friendList2" json:"friendList2,omitempty"`
+	XXX_unrecognized []byte        `json:"-"`
+}
+
+func (m *FriendListResponse) Reset()         { *m = FriendListResponse{} }
+func (m *FriendListResponse) String() string { return proto.CompactTextString(m) }
+func (*FriendListResponse) ProtoMessage()    {}
+
+func (m *FriendListResponse) GetFriendList1() []*FriendData {
+	if m != nil {
+		return m.FriendList1
+	}
+	return nil
+}
+
+func (m *FriendListResponse) GetFriendList2() []*FriendData {
+	if m != nil {
+		return m.FriendList2
+	}
+	return nil
+}
+
+// *************************************送体力给好友**********************************
+type GiveStaminaRequest struct {
+	Uid              *int64 `protobuf:"varint,1,opt,name=uid" json:"uid,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
+}
+
+func (m *GiveStaminaRequest) Reset()         { *m = GiveStaminaRequest{} }
+func (m *GiveStaminaRequest) String() string { return proto.CompactTextString(m) }
+func (*GiveStaminaRequest) ProtoMessage()    {}
+
+func (m *GiveStaminaRequest) GetUid() int64 {
+	if m != nil && m.Uid != nil {
+		return *m.Uid
+	}
+	return 0
+}
+
+type GiveStaminaResponse struct {
+	Uid              *int64 `protobuf:"varint,1,opt,name=uid" json:"uid,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
+}
+
+func (m *GiveStaminaResponse) Reset()         { *m = GiveStaminaResponse{} }
+func (m *GiveStaminaResponse) String() string { return proto.CompactTextString(m) }
+func (*GiveStaminaResponse) ProtoMessage()    {}
+
+func (m *GiveStaminaResponse) GetUid() int64 {
+	if m != nil && m.Uid != nil {
+		return *m.Uid
+	}
+	return 0
 }
 
 func init() {

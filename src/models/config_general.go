@@ -13,25 +13,26 @@ func init() {
 
 // config_general
 type ConfigGeneral struct {
-	ConfigId   int    `db:"general_config_id"`
-	Name       string `db:"general_name"`
-	Type       int    `db:"general_type"`
-	Atk        int    `db:"general_atk"`
-	Def        int    `db:"general_def"`
-	Hp         int    `db:"general_hp"`
-	Speed      int    `db:"general_speed"`
-	Dex        int    `db:"general_dex"`
-	Range      int    `db:"general_range"`
-	AtkRange   int    `db:"general_atk_range"`
-	AtkGroup   int    `db:"general_atk_group"`
-	DefGroup   int    `db:"general_def_group"`
-	HpGroup    int    `db:"general_hp_group"`
-	SpeedGroup int    `db:"general_speed_group"`
-	DexGroup   int    `db:"general_dex_group"`
-	RangeGroup int    `db:"general_range_group"`
-	BuyDiamond int    `db:"general_buy_diamond"`
-	SkillAtk   int    `db:"general_skill_atk"`
-	Desc       string `db:"general_desc"`
+	ConfigId    int    `db:"general_config_id"`
+	Name        string `db:"general_name"`
+	Type        int    `db:"general_type"`
+	Atk         int    `db:"general_atk"`
+	Def         int    `db:"general_def"`
+	Hp          int    `db:"general_hp"`
+	Speed       int    `db:"general_speed"`
+	Dex         int    `db:"general_dex"`
+	Range       int    `db:"general_range"`
+	AtkRange    int    `db:"general_atk_range"`
+	AtkGroup    int    `db:"general_atk_group"`
+	DefGroup    int    `db:"general_def_group"`
+	HpGroup     int    `db:"general_hp_group"`
+	SpeedGroup  int    `db:"general_speed_group"`
+	DexGroup    int    `db:"general_dex_group"`
+	RangeGroup  int    `db:"general_range_group"`
+	BuyDiamond  int    `db:"general_buy_diamond"`
+	SkillAtk    int    `db:"general_skill_atk"`
+	Desc        string `db:"general_desc"`
+	LevelUpCoin []int  `db:"-"`
 }
 
 func ConfigGeneralMap() map[int]*ConfigGeneral {
@@ -39,6 +40,12 @@ func ConfigGeneralMap() map[int]*ConfigGeneral {
 	result := make(map[int]*ConfigGeneral)
 
 	Lua, _ := lua.NewLua("conf/general.lua")
+
+	var coinList []int //升级需要的金币
+	levelUpCoin := Lua.GetString("level_up_coin")
+	for _, val := range strings.Split(levelUpCoin, ",") {
+		coinList = append(coinList, Atoi(val))
+	}
 
 	var i int
 	for {
@@ -49,6 +56,7 @@ func ConfigGeneralMap() map[int]*ConfigGeneral {
 		}
 		array := strings.Split(itemStr, "\\,")
 		result[Atoi(array[0])] = genByStr(array)
+		result[Atoi(array[0])].LevelUpCoin = coinList
 	}
 
 	Lua.Close()

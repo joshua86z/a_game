@@ -16,7 +16,7 @@ const (
 // Client Connect
 type Connect struct {
 	Uid     int64
-	Role    *models.RoleModel
+	Role    *models.RoleData
 	Conn    *websocket.Conn
 	Chan    chan []byte
 	Request *protodata.CommandRequest
@@ -116,17 +116,9 @@ func (this *Connect) PullFromClient() {
 				continue
 			} else {
 				if this.Role == nil {
-					this.Role = models.NewRoleModel(uid)
+					this.Role = models.Role.Role(uid)
 					if this.Role == nil {
-						this.Role = new(models.RoleModel)
-						this.Role.Uid = uid
-						this.Role.Coin = 0
-						this.Role.Diamond = 0
-						if err := models.InsertRole(this.Role); err != nil {
-							this.Role = nil
-							this.Send(lineNum(), err)
-							continue
-						}
+						this.Role = models.Role.Insert(uid)
 					}
 
 				} else if this.Role.Uid != uid {
@@ -192,6 +184,14 @@ func (this *Connect) Function(index int32) func() error {
 		return this.BattleRequest
 	case 10116:
 		return this.BattleResult
+	case 10117:
+		return this.SetLeader
+	case 10118:
+		return this.Sign
+	case 10119:
+		return this.FriendList
+	case 10120:
+		return this.GiveAction
 	default:
 		return func() error {
 			return this.Send(lineNum(), fmt.Sprintf("没有这方法 index : %d", index))

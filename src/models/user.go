@@ -3,16 +3,23 @@ package models
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
 func init() {
-	var UserModel UserModel
-	DB().AddTableWithName(UserModel, UserModel.tableName()).SetKeys(true, "Uid")
+	User.tableName = "user"
+	DB().AddTableWithName(UserData{}, User.tableName).SetKeys(true, "Uid")
+}
+
+var User UserModel
+
+type UserModel struct {
+	tableName string
 }
 
 // user
-type UserModel struct {
+type UserData struct {
 	Uid      int64  `db:"uid"`
 	UserName string `db:"username"`
 	Password string `db:"password"`
@@ -22,21 +29,17 @@ type UserModel struct {
 	RegTime  int64  `db:"reg_time"`
 }
 
-func (this UserModel) tableName() string {
-	return "user"
-}
-
-func (this UserModel) Insert() error {
+func (this *UserData) Insert() error {
 	this.RegTime = time.Now().Unix()
-	return DB().Insert(&this)
+	return DB().Insert(this)
 }
 
-func GetUserByName(name string) *UserModel {
+func (this UserModel) GetUserByName(name string) *UserData {
 
-	UserModel := new(UserModel)
+	UserData := new(UserData)
 
-	str := "SELECT * FROM " + UserModel.tableName() + " WHERE username = ? LIMIT 1"
-	if err := DB().SelectOne(UserModel, str, name); err != nil {
+	str := "SELECT * FROM " + User.tableName + " WHERE username = ? LIMIT 1"
+	if err := DB().SelectOne(UserData, str, name); err != nil {
 		if err == sql.ErrNoRows {
 			return nil
 		} else {
@@ -44,31 +47,45 @@ func GetUserByName(name string) *UserModel {
 		}
 	}
 
-	return UserModel
+	return UserData
 }
 
-func NewUserModel(uid int64) *UserModel {
+func (this UserModel) User(uid int64) *UserData {
 
-	UserModel := new(UserModel)
+	UserData := new(UserData)
 
-	err := DB().SelectOne(UserModel, "SELECT * FROM "+UserModel.tableName()+" WHERE uid = ? LIMIT 1", uid)
+	err := DB().SelectOne(UserData, "SELECT * FROM "+User.tableName+" WHERE uid = ? LIMIT 1", uid)
 	if err != nil {
-		panic(fmt.Sprintf("NewUserModel Error : %v", err))
+		panic(fmt.Sprintf("NewUserData Error : %v", err))
 	}
 
-	return UserModel
+	return UserData
 }
 
-func GetUserByOtherId(otherId string, platId int) *UserModel {
+func (this UserModel) GetUserByOtherId(otherId string, platId int) *UserData {
 
-	UserModel := new(UserModel)
+	UserData := new(UserData)
 
-	err := DB().SelectOne(UserModel, "SELECT * FROM "+UserModel.tableName()+" WHERE other_id = ? AND plat_id = ? LIMIT 1", otherId, platId)
+	err := DB().SelectOne(UserData, "SELECT * FROM "+User.tableName+" WHERE other_id = ? AND plat_id = ? LIMIT 1", otherId, platId)
 	if err == sql.ErrNoRows {
 		return nil
 	} else {
 		panic(err)
 	}
 
-	return UserModel
+	return UserData
+}
+
+func (this UserModel) UidList(otherIds []string, platId int) []int64 {
+
+	var temp []*UserData
+
+	DB().Select(&temp, "SELECT * FROM "+User.tableName+" WHERE plat_id = ? AND other_id IN('"+strings.Join(otherIds, "','")+"')", platId)
+
+	uids := make([]int64, len(temp))
+	for index, user := range temp {
+		uids[index] = user.Uid
+	}
+
+	return uids
 }

@@ -3,15 +3,13 @@ package controllers
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"fmt"
-	"libs/lua"
 	"models"
 	"protodata"
-	"strings"
 )
 
 func (this *Connect) BuyGeneral() error {
 
-	request := &protodata.BuyGeneralRequest{}
+	request := new(protodata.BuyGeneralRequest)
 	if err := Unmarshal(this.Request.GetSerializedString(), request); err != nil {
 		return this.Send(lineNum(), err)
 	}
@@ -47,7 +45,7 @@ func (this *Connect) BuyGeneral() error {
 
 func (this *Connect) GeneralLevelUp() error {
 
-	request := &protodata.GeneralLevelUpRequest{}
+	request := new(protodata.GeneralLevelUpRequest)
 	if err := Unmarshal(this.Request.GetSerializedString(), request); err != nil {
 		return this.Send(lineNum(), err)
 	}
@@ -58,15 +56,15 @@ func (this *Connect) GeneralLevelUp() error {
 		return this.Send(lineNum(), fmt.Errorf("英雄数据出错"))
 	}
 
-	if general.Level >= 5 {
+	config := models.ConfigGeneralMap()[general.ConfigId]
+
+	if general.Level >= len(config.LevelUpCoin)-1 {
 		return this.Send(lineNum(), fmt.Errorf("英雄已是最高等级"))
 	}
 
-	config := models.ConfigGeneralMap()[general.ConfigId]
-
-	coin := generallevelUpCoin(general.Level)
+	coin := config.LevelUpCoin[general.Level]
 	if coin > this.Role.Coin {
-		return this.Send(lineNum(), fmt.Errorf("金币不足,无法升级"))
+		return this.Send(lineNum(), fmt.Errorf("金币不足"))
 	}
 
 	if err := this.Role.SubCoin(coin, models.FINANCE_GENERAL_LEVELUP, config.Name); err != nil {
@@ -85,71 +83,69 @@ func (this *Connect) GeneralLevelUp() error {
 	return this.Send(StatusOK, response)
 }
 
-func generalProtoList(generalList []*models.GeneralData) []*protodata.GeneralData {
+func (this *Connect) SetLeader() error {
 
-	Lua, _ := lua.NewLua("conf/general.lua")
-	s := Lua.GetString("levelUpCoin")
-	Lua.Close()
-	array := strings.Split(s, ",")
+	request := new(protodata.SetLeaderRequest)
+	if err := Unmarshal(this.Request.GetSerializedString(), request); err != nil {
+		return this.Send(lineNum(), err)
+	}
+
+	generalId := int(request.GetLeaderId())
+
+	var find bool
+	GeneralModel := models.NewGeneralModel(this.Uid)
+	for _, general := range GeneralModel.List() {
+		if general.ConfigId == generalId {
+			find = true
+			break
+		}
+	}
+
+	if !find {
+		return this.Send(lineNum(), fmt.Errorf("武将没有解锁"))
+	}
+	if err := this.Role.SetGeneralConfigId(generalId); err != nil {
+		return this.Send(lineNum(), err)
+	}
+
+	return this.Send(StatusOK, &protodata.SetLeaderResponse{LeaderId: request.LeaderId})
+}
+
+func generalProtoList(generalList []*models.GeneralData, configs map[int]*models.ConfigGeneral) []*protodata.GeneralData {
 
 	var result []*protodata.GeneralData
-
-	configs := models.ConfigGeneralMap()
 	for _, config := range configs {
-
-		var generalData protodata.GeneralData
-		generalData.GeneralId = proto.Int32(int32(config.ConfigId))
-		generalData.GeneralName = proto.String(config.Name)
-		generalData.GeneralDesc = proto.String(config.Desc)
-		generalData.AtkR = proto.Int32(int32(config.AtkRange))
-		generalData.GeneralType = proto.Int32(int32(config.Type))
-		generalData.BuyDiamond = proto.Int32(int32(config.BuyDiamond))
 
 		var find bool
 		for _, general := range generalList {
 			if general.ConfigId == config.ConfigId {
-				generalData.Level = proto.Int32(int32(general.Level))
-				generalData.Atk = proto.Int32(int32(general.Atk))
-				generalData.Def = proto.Int32(int32(general.Def))
-				generalData.Hp = proto.Int32(int32(general.Hp))
-				generalData.Speed = proto.Int32(int32(general.Speed))
-				generalData.Dex = proto.Int32(int32(general.Dex))
-				generalData.TriggerR = proto.Int32(int32(general.Range))
-				generalData.LevelUpCoin = proto.Int32(int32(models.Atoi(array[general.Level])))
-				generalData.IsUnlock = proto.Bool(true)
-				generalData.KillNum = proto.Int32(int32(general.KillNum))
-
+				result = append(result, generalProto(general, config))
 				find = true
+				break
 			}
 		}
-
 		if !find {
-			generalData.Level = proto.Int32(1)
-			generalData.Atk = proto.Int32(int32(config.Atk))
-			generalData.Def = proto.Int32(int32(config.Def))
-			generalData.Hp = proto.Int32(int32(config.Hp))
-			generalData.Speed = proto.Int32(int32(config.Speed))
-			generalData.Dex = proto.Int32(int32(config.Dex))
-			generalData.TriggerR = proto.Int32(int32(config.Range))
-			generalData.LevelUpCoin = proto.Int32(int32(generallevelUpCoin(0)))
-			generalData.IsUnlock = proto.Bool(false)
-			generalData.KillNum = proto.Int32(0)
+			result = append(result, generalProto(new(models.GeneralData), config))
 		}
-
-		result = append(result, &generalData)
 	}
 	return result
 }
 
-func generallevelUpCoin(level int) int {
-	Lua, _ := lua.NewLua("conf/general.lua")
-	s := Lua.GetString("levelUpCoin")
-	Lua.Close()
-	array := strings.Split(s, ",")
-	return models.Atoi(array[level])
-}
-
 func generalProto(general *models.GeneralData, config *models.ConfigGeneral) *protodata.GeneralData {
+
+	var use bool
+	if general.Id == 0 {
+		general.Atk = config.Atk
+		general.Def = config.Def
+		general.Hp = config.Hp
+		general.Speed = config.Speed
+		general.Dex = config.Dex
+		general.Range = config.Range
+
+	} else {
+		use = true
+	}
+
 	return &protodata.GeneralData{
 		GeneralId:   proto.Int32(int32(config.ConfigId)),
 		GeneralName: proto.String(config.Name),
@@ -162,8 +158,8 @@ func generalProto(general *models.GeneralData, config *models.ConfigGeneral) *pr
 		TriggerR:    proto.Int32(int32(general.Range)),
 		AtkR:        proto.Int32(int32(config.AtkRange)),
 		GeneralType: proto.Int32(int32(config.Type)),
-		LevelUpCoin: proto.Int32(int32(generallevelUpCoin(general.Level))),
+		LevelUpCoin: proto.Int32(int32(config.LevelUpCoin[general.Level])),
 		BuyDiamond:  proto.Int32(int32(config.BuyDiamond)),
 		KillNum:     proto.Int32(int32(general.KillNum)),
-		IsUnlock:    proto.Bool(true)}
+		IsUnlock:    proto.Bool(use)}
 }

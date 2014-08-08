@@ -32,18 +32,17 @@ type GeneralModel struct {
 
 func NewGeneralModel(uid int64) *GeneralModel {
 
-	var General GeneralModel
+	General := new(GeneralModel)
 
 	var temp []*GeneralData
-	_, err := DB().Select(&temp, "SELECT * FROM role_generals WHERE uid = ?  ", uid)
+	_, err := DB().Select(&temp, "SELECT * FROM role_generals WHERE uid = ? ", uid)
 	if err != nil {
 		DBError(err)
 	}
 
 	General.Uid = uid
 	General.GeneralList = temp
-
-	return &General
+	return General
 }
 
 func (this *GeneralModel) List() []*GeneralData {
@@ -61,7 +60,7 @@ func (this *GeneralModel) General(configId int) *GeneralData {
 
 func (this *GeneralModel) Insert(config *ConfigGeneral) *GeneralData {
 
-	general := &GeneralData{}
+	general := new(GeneralData)
 	general.Uid = this.Uid
 	general.ConfigId = config.ConfigId
 	general.Name = config.Name

@@ -617,6 +617,62 @@ func (m *MailData) GetIsReceive() bool {
 	return false
 }
 
+type FriendData struct {
+	Uid              *int64  `protobuf:"varint,1,opt,name=uid" json:"uid,omitempty"`
+	LeaderId         *int32  `protobuf:"varint,6,opt,name=leaderId" json:"leaderId,omitempty"`
+	Num              *int32  `protobuf:"varint,3,opt,name=num" json:"num,omitempty"`
+	Point            *int32  `protobuf:"varint,4,opt,name=point" json:"point,omitempty"`
+	IsGive           *bool   `protobuf:"varint,5,opt,name=isGive" json:"isGive,omitempty"`
+	Name             *string `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *FriendData) Reset()         { *m = FriendData{} }
+func (m *FriendData) String() string { return proto.CompactTextString(m) }
+func (*FriendData) ProtoMessage()    {}
+
+func (m *FriendData) GetUid() int64 {
+	if m != nil && m.Uid != nil {
+		return *m.Uid
+	}
+	return 0
+}
+
+func (m *FriendData) GetLeaderId() int32 {
+	if m != nil && m.LeaderId != nil {
+		return *m.LeaderId
+	}
+	return 0
+}
+
+func (m *FriendData) GetNum() int32 {
+	if m != nil && m.Num != nil {
+		return *m.Num
+	}
+	return 0
+}
+
+func (m *FriendData) GetPoint() int32 {
+	if m != nil && m.Point != nil {
+		return *m.Point
+	}
+	return 0
+}
+
+func (m *FriendData) GetIsGive() bool {
+	if m != nil && m.IsGive != nil {
+		return *m.IsGive
+	}
+	return false
+}
+
+func (m *FriendData) GetName() string {
+	if m != nil && m.Name != nil {
+		return *m.Name
+	}
+	return ""
+}
+
 // *****************************通用规则信息******************************************
 type FuncData struct {
 	XXX_unrecognized []byte `json:"-"`

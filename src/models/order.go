@@ -69,7 +69,7 @@ func NewOrderModel(orderId string) (OrderModel, error) {
 //	return fmt.Sprintf("ORDERLOCK_%s", orderId)
 //}
 
-func (this OrderModel) Confirm(RoleModel *RoleModel) error {
+func (this OrderModel) Confirm(RoleData *RoleData) error {
 
 	if this.Status != 1 {
 		return fmt.Errorf("Order status not is '1' ")
@@ -88,13 +88,13 @@ func (this OrderModel) Confirm(RoleModel *RoleModel) error {
 		return err
 	}
 
-	oldDiamond := RoleModel.Diamond
-	RoleModel.Diamond += this.Diamond
-	RoleModel.UnixTime = time.Now().Unix()
+	oldDiamond := RoleData.Diamond
+	RoleData.Diamond += this.Diamond
+	RoleData.UnixTime = time.Now().Unix()
 
-	_, err = Transaction.Update(RoleModel)
+	_, err = Transaction.Update(RoleData)
 	if err != nil {
-		RoleModel.Diamond -= this.Diamond
+		RoleData.Diamond -= this.Diamond
 		Transaction.Rollback()
 		return err
 	}
@@ -103,10 +103,10 @@ func (this OrderModel) Confirm(RoleModel *RoleModel) error {
 		Transaction.Rollback()
 		return err
 	} else {
-		RoleModel.Diamond -= this.Diamond
+		RoleData.Diamond -= this.Diamond
 	}
 
-	InsertSubDiamondFinanceLog(this.Uid, FINANCE_BUY_DIAMOND, oldDiamond, RoleModel.Diamond, fmt.Sprintf("diamond: %d -> %d", oldDiamond, RoleModel.Diamond))
+	InsertSubDiamondFinanceLog(this.Uid, FINANCE_BUY_DIAMOND, oldDiamond, RoleData.Diamond, fmt.Sprintf("diamond: %d -> %d", oldDiamond, RoleData.Diamond))
 
 	return nil
 }
