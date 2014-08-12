@@ -76,15 +76,15 @@ func (this *Connect) UserDataRequest() error {
 		})
 	}
 
-	GeneralModel := models.NewGeneralModel(this.Uid)
-	if len(GeneralModel.List()) == 0 {
+	generalList := models.General.List(this.Uid)
+	if len(generalList) == 0 {
 		Lua, _ := lua.NewLua("conf/general.lua")
 		s := Lua.GetString("init_generals")
 		Lua.Close()
 		array := strings.Split(s, ",")
-		GeneralModel.Insert(configs[models.Atoi(array[0])])
-		GeneralModel.Insert(configs[models.Atoi(array[1])])
-		GeneralModel.Insert(configs[models.Atoi(array[2])])
+		generalList = append(generalList, models.General.Insert(this.Uid, configs[models.Atoi(array[0])]))
+		generalList = append(generalList, models.General.Insert(this.Uid, configs[models.Atoi(array[1])]))
+		generalList = append(generalList, models.General.Insert(this.Uid, configs[models.Atoi(array[2])]))
 	}
 
 	if !isReceive {
@@ -97,7 +97,7 @@ func (this *Connect) UserDataRequest() error {
 			this.Role.SetActionValue(this.Role.ActionValue() + action)
 		} else if generalId > 0 {
 			var find bool
-			for _, val := range GeneralModel.List() {
+			for _, val := range generalList {
 				if generalId == val.ConfigId {
 					find = true
 					break
@@ -107,7 +107,7 @@ func (this *Connect) UserDataRequest() error {
 			if find {
 				this.Role.AddDiamond(config.BuyDiamond, models.FINANCE_SIGN_GET, fmt.Sprintf("signDay : %d", signDay))
 			} else {
-				GeneralModel.Insert(config)
+				generalList = append(generalList, models.General.Insert(this.Uid, config))
 			}
 		}
 	}
@@ -116,8 +116,8 @@ func (this *Connect) UserDataRequest() error {
 
 	response := &protodata.UserDataResponse{
 		Role:             roleProto(this.Role),
-		Items:            itemProtoList(models.NewItemModel(this.Uid).List()),
-		Generals:         generalProtoList(GeneralModel.List(), configs),
+		Items:            itemProtoList(models.Item.List(this.Uid)),
+		Generals:         generalProtoList(generalList, configs),
 		SignReward:       signProto,
 		Chapters:         duplicateProtoList(models.NewDuplicateModel(this.Uid).List()),
 		TempItemDiamonds: []int32{int32(tempItemCoin[0]), int32(tempItemCoin[1]), int32(tempItemCoin[2]), int32(tempItemCoin[3])},

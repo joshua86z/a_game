@@ -18,8 +18,7 @@ func (this *Connect) BuyGeneral() error {
 	config := models.ConfigGeneralMap()[configId]
 	needDiamond := config.BuyDiamond
 
-	GeneralModel := models.NewGeneralModel(this.Role.Uid)
-	if GeneralModel.General(configId) != nil {
+	if models.General.General(this.Uid, configId) != nil {
 		return this.Send(lineNum(), fmt.Errorf("已有这个英雄: %d", configId))
 	}
 
@@ -31,7 +30,7 @@ func (this *Connect) BuyGeneral() error {
 		return this.Send(lineNum(), err)
 	}
 
-	general := GeneralModel.Insert(config)
+	general := models.General.Insert(this.Uid, config)
 	if general == nil {
 		return this.Send(lineNum(), fmt.Errorf("失败:数据库错误"))
 	}
@@ -51,7 +50,7 @@ func (this *Connect) GeneralLevelUp() error {
 	}
 	configId := int(request.GetGeneralId())
 
-	general := models.NewGeneralModel(this.Role.Uid).General(configId)
+	general := models.General.General(this.Uid, configId)
 	if general == nil {
 		return this.Send(lineNum(), fmt.Errorf("英雄数据出错"))
 	}
@@ -93,8 +92,7 @@ func (this *Connect) SetLeader() error {
 	generalId := int(request.GetLeaderId())
 
 	var find bool
-	GeneralModel := models.NewGeneralModel(this.Uid)
-	for _, general := range GeneralModel.List() {
+	for _, general := range models.General.List(this.Uid) {
 		if general.ConfigId == generalId {
 			find = true
 			break

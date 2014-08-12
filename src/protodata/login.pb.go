@@ -23,6 +23,7 @@ type LoginRequest struct {
 	OtherSign        *string `protobuf:"bytes,6,opt,name=otherSign" json:"otherSign,omitempty"`
 	OtherData        *string `protobuf:"bytes,7,opt,name=otherData" json:"otherData,omitempty"`
 	Ip               *string `protobuf:"bytes,8,opt,name=ip" json:"ip,omitempty"`
+	Imei             *string `protobuf:"bytes,9,opt,name=imei" json:"imei,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -82,6 +83,13 @@ func (m *LoginRequest) GetOtherData() string {
 func (m *LoginRequest) GetIp() string {
 	if m != nil && m.Ip != nil {
 		return *m.Ip
+	}
+	return ""
+}
+
+func (m *LoginRequest) GetImei() string {
+	if m != nil && m.Imei != nil {
+		return *m.Imei
 	}
 	return ""
 }

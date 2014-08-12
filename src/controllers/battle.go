@@ -113,12 +113,12 @@ func (this *Connect) BattleResult() error {
 	}
 
 	var generalData *protodata.GeneralData
-	GeneralModel := models.NewGeneralModel(this.Role.Uid)
-	if GeneralModel.General(generalCId) != nil {
+
+	if models.General.General(this.Uid, generalCId) != nil {
 		//
 	} else {
 		config := models.ConfigGeneralMap()[generalCId]
-		if general := GeneralModel.Insert(config); general != nil {
+		if general := models.General.Insert(this.Uid, config); general != nil {
 			return this.Send(lineNum(), fmt.Errorf("数据库错误:新建英雄失败"))
 		} else {
 			generalData = generalProto(general, config)

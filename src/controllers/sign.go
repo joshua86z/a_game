@@ -55,8 +55,7 @@ func (this *Connect) Sign() error {
 		this.Role.SetActionValue(this.Role.ActionValue() + action)
 	} else if generalId > 0 {
 		var find bool
-		GeneralModel := models.NewGeneralModel(this.Uid)
-		for _, val := range GeneralModel.List() {
+		for _, val := range models.General.List(this.Uid) {
 			if generalId == val.ConfigId {
 				find = true
 				break
@@ -66,7 +65,7 @@ func (this *Connect) Sign() error {
 		if find {
 			this.Role.AddDiamond(config.BuyDiamond, models.FINANCE_SIGN_GET, fmt.Sprintf("signDay : %d", signDay))
 		} else {
-			response.General = generalProto(GeneralModel.Insert(config), config)
+			response.General = generalProto(models.General.Insert(this.Uid, config), config)
 		}
 	}
 

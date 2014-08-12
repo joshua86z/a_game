@@ -29,10 +29,8 @@ func (this *Connect) ItemLevelUp() error {
 		return this.Send(lineNum(), fmt.Errorf("参数错误:没有这个道具Id:%d", configId))
 	}
 
-	ItemModel := models.NewItemModel(this.Role.Uid)
-
 	var coin, level int
-	item := ItemModel.Item(configId)
+	item := models.Item.Item(this.Uid, configId)
 	if item == nil {
 		level = 0
 	} else {
@@ -54,7 +52,7 @@ func (this *Connect) ItemLevelUp() error {
 	}
 
 	if item == nil {
-		if item = ItemModel.Insert(config); item == nil {
+		if item = models.Item.Insert(this.Uid, config); item == nil {
 			return this.Send(lineNum(), err)
 		}
 	} else {

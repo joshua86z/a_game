@@ -24,7 +24,12 @@ func (this *Connect) FriendList() error {
 	FriendAction := models.NewFriendAction(this.Uid)
 
 	var list1, list2 []*protodata.FriendData
-	friendList := models.Role.FriendList(uidList)
+	//	friendList := models.Role.FriendList(uidList)
+	// --------- 临时写法 --------- //
+	var friendList []*models.RoleData
+	models.DB().Select(&friendList, "SELECT * FROM `role` ORDER BY `role_unlimited_max_num` DESC LIMIT 50")
+	// --------- 临时写法 --------- //
+
 	for index, f := range friendList {
 		fdata := new(protodata.FriendData)
 		fdata.Uid = proto.Int64(f.Uid)
@@ -40,6 +45,10 @@ func (this *Connect) FriendList() error {
 		list1 = append(list1, fdata)
 	}
 
+	// --------- 临时写法 --------- //
+	friendList = make([]*models.RoleData, 0)
+	models.DB().Select(&friendList, "SELECT * FROM `role` ORDER BY `role_kill_num` DESC LIMIT 50")
+	// --------- 临时写法 --------- //
 	for i := 0; i < len(friendList); i++ {
 		for j := len(friendList) - 1; j > i; j-- {
 			if friendList[j].UnlimitedMaxNum > friendList[j-1].UnlimitedMaxNum {
@@ -92,6 +101,7 @@ func (this *Connect) GiveAction() error {
 	}
 
 	mail := new(models.MailData)
+	mail.Uid = fid
 	mail.ActionValue = 1
 	mail.Title = "好友送体力"
 	mail.Content = "好友:" + this.Role.Name + " 送你体力1点"

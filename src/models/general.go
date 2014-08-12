@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -25,43 +26,35 @@ func init() {
 	DB().AddTableWithName(GeneralData{}, "role_generals").SetKeys(true, "Id")
 }
 
+var General GeneralModel
+
 type GeneralModel struct {
-	Uid         int64
-	GeneralList []*GeneralData
 }
 
-func NewGeneralModel(uid int64) *GeneralModel {
-
-	General := new(GeneralModel)
-
-	var temp []*GeneralData
-	_, err := DB().Select(&temp, "SELECT * FROM role_generals WHERE uid = ? ", uid)
+func (this *GeneralModel) List(uid int64) []*GeneralData {
+	var result []*GeneralData
+	_, err := DB().Select(&result, "SELECT * FROM role_generals WHERE uid = ? ", uid)
 	if err != nil {
 		DBError(err)
 	}
-
-	General.Uid = uid
-	General.GeneralList = temp
-	return General
+	return result
 }
 
-func (this *GeneralModel) List() []*GeneralData {
-	return this.GeneralList
-}
-
-func (this *GeneralModel) General(configId int) *GeneralData {
-	for _, general := range this.GeneralList {
-		if general.ConfigId == configId {
-			return general
-		}
+func (this *GeneralModel) General(uid int64, configId int) *GeneralData {
+	GeneralData := new(GeneralData)
+	err := DB().SelectOne(GeneralData, "SELECT * FROM role_generals WHERE uid = ? AND general_config_id = ? LIMIT 1", uid, configId)
+	if err == sql.ErrNoRows {
+		return nil
+	} else if err != nil {
+		DBError(err)
 	}
-	return nil
+	return GeneralData
 }
 
-func (this *GeneralModel) Insert(config *ConfigGeneral) *GeneralData {
+func (this *GeneralModel) Insert(uid int64, config *ConfigGeneral) *GeneralData {
 
 	general := new(GeneralData)
-	general.Uid = this.Uid
+	general.Uid = uid
 	general.ConfigId = config.ConfigId
 	general.Name = config.Name
 	general.Level = 0
@@ -75,10 +68,7 @@ func (this *GeneralModel) Insert(config *ConfigGeneral) *GeneralData {
 
 	if err := DB().Insert(general); err != nil {
 		return nil
-	} else {
-		this.GeneralList = append(this.GeneralList, general)
 	}
-
 	return general
 }
 

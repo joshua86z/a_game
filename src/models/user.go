@@ -2,7 +2,6 @@ package models
 
 import (
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
 )
@@ -23,8 +22,9 @@ type UserData struct {
 	Uid      int64  `db:"uid"`
 	UserName string `db:"username"`
 	Password string `db:"password"`
-	Ip       string `db:"ip"`
 	OtherId  string `db:"other_id"`
+	Ip       string `db:"ip"`
+	Imei     string `db:"imei"`
 	PlatId   int    `db:"plat_id"`
 	RegTime  int64  `db:"reg_time"`
 }
@@ -42,8 +42,8 @@ func (this UserModel) GetUserByName(name string) *UserData {
 	if err := DB().SelectOne(UserData, str, name); err != nil {
 		if err == sql.ErrNoRows {
 			return nil
-		} else {
-			panic(err)
+		} else if err != nil {
+			DBError(err)
 		}
 	}
 
@@ -56,7 +56,7 @@ func (this UserModel) User(uid int64) *UserData {
 
 	err := DB().SelectOne(UserData, "SELECT * FROM "+User.tableName+" WHERE uid = ? LIMIT 1", uid)
 	if err != nil {
-		panic(fmt.Sprintf("NewUserData Error : %v", err))
+		DBError(err)
 	}
 
 	return UserData
@@ -69,8 +69,8 @@ func (this UserModel) GetUserByOtherId(otherId string, platId int) *UserData {
 	err := DB().SelectOne(UserData, "SELECT * FROM "+User.tableName+" WHERE other_id = ? AND plat_id = ? LIMIT 1", otherId, platId)
 	if err == sql.ErrNoRows {
 		return nil
-	} else {
-		panic(err)
+	} else if err != nil {
+		DBError(err)
 	}
 
 	return UserData

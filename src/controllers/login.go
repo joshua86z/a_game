@@ -19,7 +19,6 @@ func (this *Connect) Login() error {
 	}
 
 	platId := int(request.GetPlatId())
-	ip := request.GetIp()
 	username := request.GetUsername()
 	password := request.GetPassword()
 	otherId := request.GetOtherId()
@@ -28,31 +27,36 @@ func (this *Connect) Login() error {
 	sign := request.GetOtherSign()
 
 	var user *models.UserData
-	if otherId != "" && platId > 0 {
-		otherId, b := otherLogin(platId, otherId, session, sign, otherData)
-		if !b {
-			return this.Send(lineNum(), fmt.Errorf("第三方验证错误"))
-		}
-		user = models.User.GetUserByOtherId(otherId, platId)
-	} else {
+
+	otherId, b := otherLogin(platId, otherId, session, sign, otherData)
+	if !b {
+		return this.Send(lineNum(), fmt.Errorf("第三方验证错误"))
+	}
+
+	user = models.User.GetUserByOtherId(otherId, platId)
+	if user == nil {
+
 		m := md5.New()
 		m.Write([]byte(password))
 		password = hex.EncodeToString(m.Sum(nil))
-		user = models.User.GetUserByName(username)
-		if user != nil && user.Password != password {
-			return this.Send(lineNum(), fmt.Errorf("密码错误"))
-		}
-	}
 
-	if user == nil {
 		user = new(models.UserData)
 		user.UserName = username
 		user.Password = password
 		user.OtherId = otherId
-		user.Ip = ip
+		user.Ip = request.GetIp()
+		user.Imei = request.GetImei()
 		user.PlatId = platId
 		if err := user.Insert(); err != nil {
 			return this.Send(lineNum(), err)
+		}
+	} else if platId == 0 {
+
+		m := md5.New()
+		m.Write([]byte(password))
+		password = hex.EncodeToString(m.Sum(nil))
+		if user.Password != password {
+			return this.Send(lineNum(), fmt.Errorf("密码错误"))
 		}
 	}
 
@@ -70,6 +74,10 @@ func (this *Connect) Login() error {
 }
 
 func otherLogin(platId int, otherId, session, sign, otherData string) (string, bool) {
+
+	if platId == 0 {
+		return otherId, true
+	}
 
 	Lua, err := lua.NewLua(fmt.Sprintf("lua/plat_%d.lua", platId))
 	if err != nil {
