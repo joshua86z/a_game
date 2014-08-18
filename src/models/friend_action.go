@@ -24,10 +24,11 @@ type FriendActionModel struct {
 func NewFriendAction(uid int64) *FriendAction {
 
 	var temp []*FriendActionModel
-	DB().Select(&temp, "SELECT * friend_action WHERE uid = ? AND `date` = ?", uid, time.Now().Format("20060102"))
+	DB().Select(&temp, "SELECT * FROM friend_action WHERE uid = ? AND `date` = ?", uid, time.Now().Format("20060102"))
 
 	FriendAction := new(FriendAction)
 	FriendAction.Uid = uid
+	FriendAction.Map = make(map[int64]*FriendActionModel)
 
 	for _, val := range temp {
 		FriendAction.Map[val.Fid] = val

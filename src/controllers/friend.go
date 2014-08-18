@@ -27,10 +27,12 @@ func (this *Connect) FriendList() error {
 	//	friendList := models.Role.FriendList(uidList)
 	// --------- 临时写法 --------- //
 	var friendList []*models.RoleData
-	models.DB().Select(&friendList, "SELECT * FROM `role` ORDER BY `role_unlimited_max_num` DESC LIMIT 50")
+	models.DB().Select(&friendList, "SELECT * FROM `role` ORDER BY `role_kill_num` DESC LIMIT 50")
+
 	// --------- 临时写法 --------- //
 
 	for index, f := range friendList {
+
 		fdata := new(protodata.FriendData)
 		fdata.Uid = proto.Int64(f.Uid)
 		fdata.Num = proto.Int32(int32(index + 1))
@@ -47,15 +49,16 @@ func (this *Connect) FriendList() error {
 
 	// --------- 临时写法 --------- //
 	friendList = make([]*models.RoleData, 0)
-	models.DB().Select(&friendList, "SELECT * FROM `role` ORDER BY `role_kill_num` DESC LIMIT 50")
+	models.DB().Select(&friendList, "SELECT * FROM `role` ORDER BY `role_unlimited_max_num` DESC LIMIT 50")
+
 	// --------- 临时写法 --------- //
-	for i := 0; i < len(friendList); i++ {
-		for j := len(friendList) - 1; j > i; j-- {
-			if friendList[j].UnlimitedMaxNum > friendList[j-1].UnlimitedMaxNum {
-				friendList[j-1], friendList[j] = friendList[j], friendList[j-1]
-			}
-		}
-	}
+	//for i := 0; i < len(friendList); i++ {
+	//	for j := len(friendList) - 1; j > i; j-- {
+	//		if friendList[j].UnlimitedMaxNum > friendList[j-1].UnlimitedMaxNum {
+	//			friendList[j-1], friendList[j] = friendList[j], friendList[j-1]
+	//		}
+	//	}
+	//}
 
 	for index, f := range friendList {
 		fdata := new(protodata.FriendData)

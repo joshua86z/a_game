@@ -596,6 +596,7 @@ type FightInitResponse struct {
 	Role             *RoleData `protobuf:"bytes,1,opt,name=role" json:"role,omitempty"`
 	FightMode        *int32    `protobuf:"varint,2,opt,name=fightMode" json:"fightMode,omitempty"`
 	BattleData       *string   `protobuf:"bytes,3,opt,name=battleData" json:"battleData,omitempty"`
+	TempItems        []int32   `protobuf:"varint,4,rep,name=tempItems" json:"tempItems,omitempty"`
 	XXX_unrecognized []byte    `json:"-"`
 }
 
@@ -624,9 +625,16 @@ func (m *FightInitResponse) GetBattleData() string {
 	return ""
 }
 
+func (m *FightInitResponse) GetTempItems() []int32 {
+	if m != nil {
+		return m.TempItems
+	}
+	return nil
+}
+
 // *************************************战斗结算**********************************
 type FightEndRequest struct {
-	GeneralId        *int32 `protobuf:"varint,1,opt,name=generalId" json:"generalId,omitempty"`
+	// optional int32 generalId = 1;		//奖励英雄Id
 	KillNum          *int32 `protobuf:"varint,2,opt,name=killNum" json:"killNum,omitempty"`
 	CoinNum          *int32 `protobuf:"varint,3,opt,name=coinNum" json:"coinNum,omitempty"`
 	DiamondNum       *int32 `protobuf:"varint,4,opt,name=diamondNum" json:"diamondNum,omitempty"`
@@ -637,13 +645,6 @@ type FightEndRequest struct {
 func (m *FightEndRequest) Reset()         { *m = FightEndRequest{} }
 func (m *FightEndRequest) String() string { return proto.CompactTextString(m) }
 func (*FightEndRequest) ProtoMessage()    {}
-
-func (m *FightEndRequest) GetGeneralId() int32 {
-	if m != nil && m.GeneralId != nil {
-		return *m.GeneralId
-	}
-	return 0
-}
 
 func (m *FightEndRequest) GetKillNum() int32 {
 	if m != nil && m.KillNum != nil {
@@ -677,6 +678,7 @@ type FightEndResponse struct {
 	Role             *RoleData      `protobuf:"bytes,1,opt,name=role" json:"role,omitempty"`
 	Reward           *RewardData    `protobuf:"bytes,2,opt,name=reward" json:"reward,omitempty"`
 	Chapter          []*ChapterData `protobuf:"bytes,3,rep,name=chapter" json:"chapter,omitempty"`
+	General          *GeneralData   `protobuf:"bytes,4,opt,name=general" json:"general,omitempty"`
 	XXX_unrecognized []byte         `json:"-"`
 }
 
@@ -701,6 +703,13 @@ func (m *FightEndResponse) GetReward() *RewardData {
 func (m *FightEndResponse) GetChapter() []*ChapterData {
 	if m != nil {
 		return m.Chapter
+	}
+	return nil
+}
+
+func (m *FightEndResponse) GetGeneral() *GeneralData {
+	if m != nil {
+		return m.General
 	}
 	return nil
 }

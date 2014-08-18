@@ -29,7 +29,7 @@ func (this *Connect) Sign() error {
 		return this.Send(lineNum(), err)
 	}
 
-	configs := models.ConfigGeneralMap()
+	configs := models.BaseGeneralMap()
 	var rewardList []*protodata.RewardData
 	for i := this.Role.SignTimes; i < this.Role.SignTimes+7; i++ {
 
@@ -56,7 +56,7 @@ func (this *Connect) Sign() error {
 	} else if generalId > 0 {
 		var find bool
 		for _, val := range models.General.List(this.Uid) {
-			if generalId == val.ConfigId {
+			if generalId == val.BaseId {
 				find = true
 				break
 			}

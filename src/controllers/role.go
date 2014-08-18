@@ -23,7 +23,7 @@ func (this *Connect) UserDataRequest() error {
 		}
 	}
 
-	configs := models.ConfigGeneralMap()
+	configs := models.BaseGeneralMap()
 
 	var rewardList []*protodata.RewardData
 	for i := this.Role.SignTimes; i < this.Role.SignTimes+7; i++ {
@@ -98,7 +98,7 @@ func (this *Connect) UserDataRequest() error {
 		} else if generalId > 0 {
 			var find bool
 			for _, val := range generalList {
-				if generalId == val.ConfigId {
+				if generalId == val.BaseId {
 					find = true
 					break
 				}
@@ -112,15 +112,15 @@ func (this *Connect) UserDataRequest() error {
 		}
 	}
 
-	tempItemCoin := tempItemCoin()
+	tempItemDiamond := tempItemDiamond()
 
 	response := &protodata.UserDataResponse{
 		Role:             roleProto(this.Role),
 		Items:            itemProtoList(models.Item.List(this.Uid)),
 		Generals:         generalProtoList(generalList, configs),
 		SignReward:       signProto,
-		Chapters:         duplicateProtoList(models.NewDuplicateModel(this.Uid).List()),
-		TempItemDiamonds: []int32{int32(tempItemCoin[0]), int32(tempItemCoin[1]), int32(tempItemCoin[2]), int32(tempItemCoin[3])},
+		Chapters:         duplicateProtoList(models.NewDuplicateModel(this.Uid).List(), models.ConfigDuplicateList()),
+		TempItemDiamonds: []int32{int32(tempItemDiamond[0]), int32(tempItemDiamond[1]), int32(tempItemDiamond[2]), int32(tempItemDiamond[3])},
 		CoinProducts:     coinProductProtoList,
 		DiamondProducts:  productProtoList,
 		LeaderId:         proto.Int32(int32(this.Role.GeneralConfigId))}

@@ -24,7 +24,7 @@ type Connect struct {
 
 func (this *Connect) Send(status int, value interface{}) error {
 	if _, ok := value.(error); ok {
-		log.Error(" %d %v", status, value)
+		log.Error("linuNum -> %d : %v", status, value)
 	}
 	this.Chan <- ReturnStr(this.Request, status, value)
 	this.Request = nil
@@ -133,6 +133,7 @@ func (this *Connect) PullFromClient() {
 
 		if this.Uid > 0 {
 			log.Info("Exec -> %d (uid:%d)", this.Request.GetCmdId(), this.Uid)
+			models.InsertRequestLog(this.Uid, this.Request.GetCmdId())
 		}
 
 		this.Function(this.Request.GetCmdId())()
@@ -143,13 +144,6 @@ func (this *Connect) PullFromClient() {
 			log.Warn("Slow Exec , time is %v second", execTime.Seconds())
 		} else {
 			log.Info("time is %v second", execTime.Seconds())
-		}
-
-		if this.Role != nil {
-			// 玩家操作记录
-			if _, ok := request_log_map[this.Request.GetCmdId()]; ok {
-				//				requestLog.InsertLog(player.UniqueId, index)
-			}
 		}
 	}
 }

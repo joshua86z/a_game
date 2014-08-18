@@ -14,30 +14,30 @@ func (this *Connect) BuyGeneral() error {
 		return this.Send(lineNum(), err)
 	}
 
-	configId := int(request.GetGeneralId())
-	config := models.ConfigGeneralMap()[configId]
-	needDiamond := config.BuyDiamond
+	baseId := int(request.GetGeneralId())
+	baseGeneral := models.BaseGeneral(baseId, nil)
+	needDiamond := baseGeneral.BuyDiamond
 
-	if models.General.General(this.Uid, configId) != nil {
-		return this.Send(lineNum(), fmt.Errorf("已有这个英雄: %d", configId))
+	if models.General.General(this.Uid, baseId) != nil {
+		return this.Send(lineNum(), fmt.Errorf("已有这个英雄: %d", baseId))
 	}
 
 	if needDiamond > this.Role.Diamond {
 		return this.Send(lineNum(), fmt.Errorf("钻石不足"))
 	}
 
-	if err := this.Role.SubDiamond(needDiamond, models.FINANCE_BUY_GENERAL, fmt.Sprintf("genId : %d", configId)); err != nil {
+	if err := this.Role.SubDiamond(needDiamond, models.FINANCE_BUY_GENERAL, fmt.Sprintf("genId : %d", baseId)); err != nil {
 		return this.Send(lineNum(), err)
 	}
 
-	general := models.General.Insert(this.Uid, config)
+	general := models.General.Insert(this.Uid, baseGeneral)
 	if general == nil {
 		return this.Send(lineNum(), fmt.Errorf("失败:数据库错误"))
 	}
 
 	response := &protodata.BuyGeneralResponse{
 		Role:    roleProto(this.Role),
-		General: generalProto(general, config),
+		General: generalProto(general, baseGeneral),
 	}
 	return this.Send(StatusOK, response)
 }
@@ -48,35 +48,35 @@ func (this *Connect) GeneralLevelUp() error {
 	if err := Unmarshal(this.Request.GetSerializedString(), request); err != nil {
 		return this.Send(lineNum(), err)
 	}
-	configId := int(request.GetGeneralId())
+	baseId := int(request.GetGeneralId())
 
-	general := models.General.General(this.Uid, configId)
+	general := models.General.General(this.Uid, baseId)
 	if general == nil {
 		return this.Send(lineNum(), fmt.Errorf("英雄数据出错"))
 	}
 
-	config := models.ConfigGeneralMap()[general.ConfigId]
+	baseGeneral := models.BaseGeneral(general.BaseId, nil)
 
-	if general.Level >= len(config.LevelUpCoin)-1 {
+	if general.Level >= len(baseGeneral.LevelUpCoin)-1 {
 		return this.Send(lineNum(), fmt.Errorf("英雄已是最高等级"))
 	}
 
-	coin := config.LevelUpCoin[general.Level]
+	coin := baseGeneral.LevelUpCoin[general.Level]
 	if coin > this.Role.Coin {
 		return this.Send(lineNum(), fmt.Errorf("金币不足"))
 	}
 
-	if err := this.Role.SubCoin(coin, models.FINANCE_GENERAL_LEVELUP, config.Name); err != nil {
+	if err := this.Role.SubCoin(coin, models.FINANCE_GENERAL_LEVELUP, baseGeneral.Name); err != nil {
 		return this.Send(lineNum(), err)
 	}
 
-	if err := general.LevelUp(config); err != nil {
+	if err := general.LevelUp(baseGeneral); err != nil {
 		return this.Send(lineNum(), err)
 	}
 
 	response := &protodata.GeneralLevelUpResponse{
 		Role:    roleProto(this.Role),
-		General: generalProto(general, config),
+		General: generalProto(general, baseGeneral),
 	}
 
 	return this.Send(StatusOK, response)
@@ -93,7 +93,7 @@ func (this *Connect) SetLeader() error {
 
 	var find bool
 	for _, general := range models.General.List(this.Uid) {
-		if general.ConfigId == generalId {
+		if general.BaseId == generalId {
 			find = true
 			break
 		}
@@ -109,55 +109,56 @@ func (this *Connect) SetLeader() error {
 	return this.Send(StatusOK, &protodata.SetLeaderResponse{LeaderId: request.LeaderId})
 }
 
-func generalProtoList(generalList []*models.GeneralData, configs map[int]*models.ConfigGeneral) []*protodata.GeneralData {
+func generalProtoList(generalList []*models.GeneralData, configs map[int]*models.Base_General) []*protodata.GeneralData {
 
 	var result []*protodata.GeneralData
-	for _, config := range configs {
+	for _, baseGeneral := range configs {
 
 		var find bool
 		for _, general := range generalList {
-			if general.ConfigId == config.ConfigId {
-				result = append(result, generalProto(general, config))
+			if general.BaseId == baseGeneral.BaseId {
+				result = append(result, generalProto(general, baseGeneral))
 				find = true
 				break
 			}
 		}
 		if !find {
-			result = append(result, generalProto(new(models.GeneralData), config))
+			result = append(result, generalProto(new(models.GeneralData), baseGeneral))
 		}
 	}
 	return result
 }
 
-func generalProto(general *models.GeneralData, config *models.ConfigGeneral) *protodata.GeneralData {
+func generalProto(general *models.GeneralData, baseGeneral *models.Base_General) *protodata.GeneralData {
 
 	var use bool
 	if general.Id == 0 {
-		general.Atk = config.Atk
-		general.Def = config.Def
-		general.Hp = config.Hp
-		general.Speed = config.Speed
-		general.Dex = config.Dex
-		general.Range = config.Range
+		general.Atk = baseGeneral.Atk
+		general.Def = baseGeneral.Def
+		general.Hp = baseGeneral.Hp
+		general.Speed = baseGeneral.Speed
+		general.Dex = baseGeneral.Dex
+		general.Range = baseGeneral.Range
 
 	} else {
 		use = true
 	}
 
 	return &protodata.GeneralData{
-		GeneralId:   proto.Int32(int32(config.ConfigId)),
-		GeneralName: proto.String(config.Name),
-		GeneralDesc: proto.String(config.Desc),
+		GeneralId:   proto.Int32(int32(baseGeneral.BaseId)),
+		GeneralName: proto.String(baseGeneral.Name),
+		GeneralDesc: proto.String(baseGeneral.Desc),
 		Level:       proto.Int32(int32(general.Level)),
 		Atk:         proto.Int32(int32(general.Atk)),
 		Def:         proto.Int32(int32(general.Def)),
 		Hp:          proto.Int32(int32(general.Hp)),
 		Speed:       proto.Int32(int32(general.Speed)),
+		Dex:         proto.Int32(int32(general.Dex)),
 		TriggerR:    proto.Int32(int32(general.Range)),
-		AtkR:        proto.Int32(int32(config.AtkRange)),
-		GeneralType: proto.Int32(int32(config.Type)),
-		LevelUpCoin: proto.Int32(int32(config.LevelUpCoin[general.Level])),
-		BuyDiamond:  proto.Int32(int32(config.BuyDiamond)),
+		AtkR:        proto.Int32(int32(baseGeneral.AtkRange)),
+		GeneralType: proto.Int32(int32(baseGeneral.Type)),
+		LevelUpCoin: proto.Int32(int32(baseGeneral.LevelUpCoin[general.Level])),
+		BuyDiamond:  proto.Int32(int32(baseGeneral.BuyDiamond)),
 		KillNum:     proto.Int32(int32(general.KillNum)),
 		IsUnlock:    proto.Bool(use)}
 }

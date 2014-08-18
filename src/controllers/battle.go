@@ -16,6 +16,7 @@ func (this *Connect) BattleRequest() error {
 
 	chapterId := int(request.GetChapterId())
 	sectionId := int(request.GetSectionId())
+
 	tempItemList := request.GetTempItems()
 
 	var (
@@ -59,18 +60,25 @@ func (this *Connect) BattleRequest() error {
 		config = configs[0]
 	}
 
+	actionValue := this.Role.ActionValue()
+	if actionValue < 1 {
+		return this.Send(lineNum(), fmt.Errorf("体力不足"))
+	} else {
+		if err := this.Role.SetActionValue(actionValue - 1); err != nil {
+			return this.Send(lineNum(), err)
+		}
+	}
+
 	// 是否使用临时道具
 	if len(tempItemList) > 0 {
-		tempItemCoin := tempItemCoin()
-		var coin int
+		tempItemDiamond := tempItemDiamond()
+		var diamond int
 		desc := "use items: "
-		for index := range tempItemList {
-			if tempItemList[index] > 0 {
-				coin += tempItemCoin[index]
-				desc += fmt.Sprintf("%d , ", index+1)
-			}
+		for _, val := range tempItemList {
+			diamond += tempItemDiamond[val]
+			desc += fmt.Sprintf("%d", val+1)
 		}
-		if err := this.Role.SubCoin(coin, models.FINANCE_DUPLICATE_USE, desc); err != nil {
+		if err := this.Role.SubDiamond(diamond, models.FINANCE_DUPLICATE_USE, desc); err != nil {
 			return this.Send(lineNum(), err)
 		}
 	}
@@ -87,6 +95,7 @@ func (this *Connect) BattleRequest() error {
 	response := &protodata.FightInitResponse{
 		BattleData: proto.String(config.Value),
 		FightMode:  request.FightMode,
+		TempItems:  request.TempItems,
 		Role:       roleProto(this.Role)}
 	return this.Send(StatusOK, response)
 }
@@ -98,12 +107,12 @@ func (this *Connect) BattleResult() error {
 		return this.Send(lineNum(), err)
 	}
 
-	generalCId := int(request.GetGeneralId())
 	coin := int(request.GetCoinNum())
 	diamond := int(request.GetDiamondNum())
 	killNum := int(request.GetKillNum())
 
 	BattleLogModel := models.LastBattleLog(this.Uid)
+
 	if BattleLogModel == nil || BattleLogModel.Result != 0 {
 		return this.Send(lineNum(), fmt.Errorf("战斗数据非法:没有战斗初始化"))
 	}
@@ -112,50 +121,128 @@ func (this *Connect) BattleResult() error {
 		return this.Send(lineNum(), err)
 	}
 
-	var generalData *protodata.GeneralData
+	response := &protodata.FightEndResponse{Role: roleProto(this.Role)}
 
-	if models.General.General(this.Uid, generalCId) != nil {
-		//
+	if killNum > 0 {
+		general := models.General.General(this.Uid, this.Role.GeneralConfigId)
+		general.AddKillNum(killNum)
+		response.General = generalProto(general, models.BaseGeneral(general.BaseId, nil))
+	}
+
+	var generalData *protodata.GeneralData
+	if BattleLogModel.Type == 0 && request.GetIsWin() {
+
+		var find bool
+		DuplicateModel := models.NewDuplicateModel(this.Uid)
+		//duplicateNum := len(DuplicateModel.List())
+		for _, val := range DuplicateModel.List() {
+			if val.Chapter == BattleLogModel.Chapter && val.Section == BattleLogModel.Section {
+				find = true
+				break
+			}
+		}
+
+		if !find {
+			if nil == DuplicateModel.Insert(BattleLogModel.Chapter, BattleLogModel.Section) {
+				return this.Send(lineNum(), fmt.Errorf("数据库错误:新增数据失败"))
+			}
+		}
+
+		//var length int = 1
+		//if len(DuplicateModel.List()) != duplicateNum {
+		//	length = 2
+		//}
+		//duplicateNum = len(DuplicateModel.List())
+		//begin := duplicateNum - length
+		//if begin < 0 {
+		//	begin = 0
+		//}
+
+		list := models.ConfigDuplicateList()
+
+		last := DuplicateModel.List()[len(DuplicateModel.List())-1]
+		var base *models.ConfigDuplicate
+		find = false
+		for _, duplicate := range list {
+			if find == true {
+				base = duplicate
+				break
+			}
+			if duplicate.Chapter == last.Chapter && duplicate.Section == last.Section {
+				base = duplicate
+				find = true
+			}
+		}
+
+		section := new(protodata.SectionData)
+		section.SectionId = proto.Int32(int32(base.Section))
+		section.SectionName = proto.String(base.SectionName)
+		section.IsUnlock = proto.Bool(true)
+		chapter := new(protodata.ChapterData)
+		chapter.ChapterId = proto.Int32(int32(base.Chapter))
+		chapter.ChapterName = proto.String(base.ChapterName)
+		chapter.IsUnlock = proto.Bool(true)
+		chapter.Sections = append(chapter.Sections, section)
+		response.Chapter = append(response.Chapter, chapter)
+
+		// 奖励英雄
+		baseId := 0
+		for _, val := range list {
+			if val.Chapter == BattleLogModel.Chapter && val.Section == BattleLogModel.Section {
+				if val.GenId > 0 {
+					baseId = val.GenId
+				}
+				break
+			}
+		}
+
+		if baseId > 0 {
+			if general := models.General.General(this.Uid, baseId); general == nil {
+				baseGeneral := models.BaseGeneral(baseId, nil)
+				if general := models.General.Insert(this.Uid, baseGeneral); general == nil {
+					return this.Send(lineNum(), fmt.Errorf("数据库错误:新建英雄失败"))
+				} else {
+					generalData = generalProto(general, baseGeneral)
+				}
+			}
+		}
 	} else {
-		config := models.ConfigGeneralMap()[generalCId]
-		if general := models.General.Insert(this.Uid, config); general != nil {
-			return this.Send(lineNum(), fmt.Errorf("数据库错误:新建英雄失败"))
-		} else {
-			generalData = generalProto(general, config)
+		if request.GetIsWin() {
+			this.Role.UnlimitedNum += 1
+			if this.Role.UnlimitedNum > this.Role.UnlimitedMaxNum {
+				this.Role.UnlimitedMaxNum = this.Role.UnlimitedNum
+			}
+		} else if this.Role.UnlimitedNum != 0 {
+			this.Role.UnlimitedNum = 0
 		}
 	}
 
-	err := this.Role.AddKillNum(killNum, coin, diamond, fmt.Sprintf("Chapter: %d , Section: %d ", BattleLogModel.Chapter, BattleLogModel.Section))
-	if err != nil {
+	response.Reward = rewardProto(coin, diamond, 0, generalData)
+
+	oldCoin, oldDiamond := this.Role.Coin, this.Role.Diamond
+
+	if killNum > 0 {
+		this.Role.KillNum += killNum
+	}
+	if coin > 0 {
+		this.Role.Coin += coin
+	}
+	if diamond > 0 {
+		this.Role.Diamond += diamond
+	}
+
+	if err := this.Role.Set(); err != nil {
+		this.Role = nil
 		return this.Send(lineNum(), err)
 	}
 
-	var find bool
-	DuplicateModel := models.NewDuplicateModel(this.Uid)
-	duplicateNum := len(DuplicateModel.List())
-	for _, val := range DuplicateModel.List() {
-		if val.Chapter == BattleLogModel.Chapter && val.Section == BattleLogModel.Section {
-			find = true
-			break
-		}
+	if coin > 0 {
+		models.InsertAddCoinFinanceLog(this.Uid, models.FINANCE_DUPLICATE_GET, oldCoin, this.Role.Coin, "")
+	}
+	if diamond > 0 {
+		models.InsertAddDiamondFinanceLog(this.Uid, models.FINANCE_DUPLICATE_GET, oldDiamond, this.Role.Diamond, "")
 	}
 
-	if !find {
-		if nil == DuplicateModel.Insert(BattleLogModel.Chapter, BattleLogModel.Section) {
-			return this.Send(lineNum(), fmt.Errorf("数据库错误:新增数据失败"))
-		}
-	}
-
-	var length int = 1
-	if len(DuplicateModel.List()) != duplicateNum {
-		length = 2
-	}
-	duplicateNum = len(DuplicateModel.List())
-
-	response := &protodata.FightEndResponse{
-		Role:    roleProto(this.Role),
-		Reward:  rewardProto(coin, diamond, 0, generalData),
-		Chapter: duplicateProtoList(DuplicateModel.List()[duplicateNum-length:])}
 	return this.Send(StatusOK, response)
 }
 

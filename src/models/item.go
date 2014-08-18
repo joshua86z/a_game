@@ -9,7 +9,7 @@ import (
 type ItemData struct {
 	Id       int    `db:"item_id"`
 	Uid      int64  `db:"uid"`
-	ConfigId int    `db:"item_config_id"`
+	BaseId   int    `db:"item_base_id"`
 	Name     string `db:"item_name"`
 	Level    int    `db:"item_level"`
 	UnixTime int64  `db:"item_time"`
@@ -49,10 +49,10 @@ func (this *ItemModel) List(uid int64) []*ItemData {
 	return result
 }
 
-func (this ItemModel) Item(uid int64, configId int) *ItemData {
+func (this ItemModel) Item(uid int64, baseId int) *ItemData {
 
 	ItemData := new(ItemData)
-	err := DB().SelectOne(ItemData, "SELECT * FROM role_items WHERE uid = ? AND item_config_id = ?", uid, configId)
+	err := DB().SelectOne(ItemData, "SELECT * FROM role_items WHERE uid = ? AND item_base_id = ?", uid, baseId)
 	if err == sql.ErrNoRows {
 		return nil
 	} else if err != nil {
@@ -61,12 +61,12 @@ func (this ItemModel) Item(uid int64, configId int) *ItemData {
 	return ItemData
 }
 
-func (this ItemModel) Insert(uid int64, config *ConfigItem) *ItemData {
+func (this ItemModel) Insert(uid int64, base *Base_Item) *ItemData {
 
 	item := new(ItemData)
 	item.Uid = uid
-	item.ConfigId = config.ConfigId
-	item.Name = config.Name
+	item.BaseId = base.BaseId
+	item.Name = base.Name
 	item.Level = 1
 	item.UnixTime = time.Now().Unix()
 

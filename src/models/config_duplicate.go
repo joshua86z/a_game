@@ -18,8 +18,7 @@ type ConfigDuplicate struct {
 	ChapterName string `db:"duplicate_chapter_name"`
 	SectionName string `db:"duplicate_section_name"`
 	Value       string `db:"duplicate_value"`
-	ChapterDesc string `db:"duplicate_chapter_desc"`
-	SectionDesc string `db:"duplicate_section_desc"`
+	GenId       int
 }
 
 func ConfigDuplicateList() []*ConfigDuplicate {
@@ -42,8 +41,7 @@ func ConfigDuplicateList() []*ConfigDuplicate {
 			ChapterName: array[2],
 			SectionName: array[3],
 			Value:       array[4],
-			ChapterDesc: array[5],
-			SectionDesc: array[6]})
+			GenId:       Atoi(array[5])})
 	}
 
 	Lua.Close()

@@ -63,6 +63,8 @@ func (this *DuplicateModel) Insert(chapter int, section int) *DuplicateData {
 
 	if err := DB().Insert(duplicate); err != nil {
 		return nil
+	} else {
+		this.DuplicateList = append(this.DuplicateList, duplicate)
 	}
 
 	return duplicate

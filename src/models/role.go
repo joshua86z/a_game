@@ -134,6 +134,8 @@ func (this *RoleData) SetActionValue(n int) error {
 	if n > Role.MaxActionValue {
 		this.OtherAction = n - Role.MaxActionValue
 		n = Role.MaxActionValue
+	} else {
+		this.OtherAction = 0
 	}
 
 	nowUnix := time.Now().Unix()
@@ -283,45 +285,45 @@ func (this *RoleData) SetGeneralConfigId(configId int) error {
 	return err
 }
 
-func (this *RoleData) AddKillNum(num int, coin int, diamond int, desc string) error {
+//func (this *RoleData) AddKillNum(num int, coin int, diamond int, desc string) error {
 
-	killNum, oldCoin, oldDiamond := this.KillNum, this.Coin, this.Diamond
+//	killNum, oldCoin, oldDiamond := this.KillNum, this.Coin, this.Diamond
 
-	this.KillNum += num
-	this.Coin += coin
-	this.Diamond += diamond
-	this.UnixTime = time.Now().Unix()
+//	this.KillNum += num
+//	this.Coin += coin
+//	this.Diamond += diamond
+//	this.UnixTime = time.Now().Unix()
 
-	_, err := DB().Update(this)
-	if err != nil {
-		this.KillNum, this.Coin, this.Diamond = killNum, oldCoin, oldDiamond
-	} else {
-		if coin > 0 {
-			InsertAddCoinFinanceLog(this.Uid, FINANCE_DUPLICATE_GET, oldCoin, this.Coin, desc)
-		}
-		if diamond > 0 {
-			InsertAddDiamondFinanceLog(this.Uid, FINANCE_DUPLICATE_GET, oldDiamond, this.Diamond, desc)
-		}
-	}
-	return err
-}
+//	_, err := DB().Update(this)
+//	if err != nil {
+//		this.KillNum, this.Coin, this.Diamond = killNum, oldCoin, oldDiamond
+//	} else {
+//		if coin > 0 {
+//			InsertAddCoinFinanceLog(this.Uid, FINANCE_DUPLICATE_GET, oldCoin, this.Coin, desc)
+//		}
+//		if diamond > 0 {
+//			InsertAddDiamondFinanceLog(this.Uid, FINANCE_DUPLICATE_GET, oldDiamond, this.Diamond, desc)
+//		}
+//	}
+//	return err
+//}
 
-func (this *RoleData) SetUnlimitedNum(num int) error {
+//func (this *RoleData) SetUnlimitedNum(num int) error {
 
-	temp1, temp2 := this.UnlimitedNum, this.UnlimitedMaxNum
+//	temp1, temp2 := this.UnlimitedNum, this.UnlimitedMaxNum
 
-	this.UnixTime = time.Now().Unix()
-	this.UnlimitedNum = num
-	if num > this.UnlimitedMaxNum {
-		this.UnlimitedMaxNum = num
-	}
+//	this.UnixTime = time.Now().Unix()
+//	this.UnlimitedNum = num
+//	if num > this.UnlimitedMaxNum {
+//		this.UnlimitedMaxNum = num
+//	}
 
-	_, err := DB().Update(this)
-	if err != nil {
-		this.UnlimitedNum, this.UnlimitedMaxNum = temp1, temp2
-	}
-	return err
-}
+//	_, err := DB().Update(this)
+//	if err != nil {
+//		this.UnlimitedNum, this.UnlimitedMaxNum = temp1, temp2
+//	}
+//	return err
+//}
 
 func (this *RoleData) Sign() error {
 
@@ -370,5 +372,11 @@ func (this *RoleData) UpdateDate() error {
 		this.BuyActionNum = temp2
 	}
 
+	return err
+}
+
+func (this *RoleData) Set() error {
+	this.UnixTime = time.Now().Unix()
+	_, err := DB().Update(this)
 	return err
 }

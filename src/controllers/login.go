@@ -36,9 +36,11 @@ func (this *Connect) Login() error {
 	user = models.User.GetUserByOtherId(otherId, platId)
 	if user == nil {
 
-		m := md5.New()
-		m.Write([]byte(password))
-		password = hex.EncodeToString(m.Sum(nil))
+		if platId == 0 {
+			m := md5.New()
+			m.Write([]byte(password))
+			password = hex.EncodeToString(m.Sum(nil))
+		}
 
 		user = new(models.UserData)
 		user.UserName = username
