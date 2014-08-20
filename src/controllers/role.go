@@ -26,7 +26,7 @@ func (this *Connect) UserDataRequest() error {
 	configs := models.BaseGeneralMap()
 
 	var rewardList []*protodata.RewardData
-	for i := this.Role.SignTimes; i < this.Role.SignTimes+7; i++ {
+	for i := this.Role.SignNum; i < this.Role.SignNum+7; i++ {
 
 		c, d, s, g := signReward(i)
 
@@ -41,7 +41,7 @@ func (this *Connect) UserDataRequest() error {
 		rewardList = append(rewardList, temp)
 	}
 
-	signDay := this.Role.SignTimes % 7
+	signDay := this.Role.SignNum % 7
 	if signDay == 0 {
 		signDay = 7
 	}
@@ -88,7 +88,7 @@ func (this *Connect) UserDataRequest() error {
 	}
 
 	if !isReceive {
-		coin, diamond, action, generalId := signReward(this.Role.SignTimes)
+		coin, diamond, action, generalId := signReward(this.Role.SignNum)
 		if coin > 0 {
 			this.Role.AddCoin(coin, models.FINANCE_SIGN_GET, fmt.Sprintf("signDay : %d", signDay))
 		} else if diamond > 0 {
@@ -123,7 +123,7 @@ func (this *Connect) UserDataRequest() error {
 		TempItemDiamonds: []int32{int32(tempItemDiamond[0]), int32(tempItemDiamond[1]), int32(tempItemDiamond[2]), int32(tempItemDiamond[3])},
 		CoinProducts:     coinProductProtoList,
 		DiamondProducts:  productProtoList,
-		LeaderId:         proto.Int32(int32(this.Role.GeneralConfigId))}
+		LeaderId:         proto.Int32(int32(this.Role.GeneralBaseId))}
 
 	return this.Send(StatusOK, response)
 }

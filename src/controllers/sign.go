@@ -12,7 +12,7 @@ func (this *Connect) Sign() error {
 
 	response := new(protodata.SignRewardResponse)
 
-	signDay := this.Role.SignTimes % 7
+	signDay := this.Role.SignNum % 7
 	if signDay == 0 {
 		signDay = 7
 	}
@@ -31,7 +31,7 @@ func (this *Connect) Sign() error {
 
 	configs := models.BaseGeneralMap()
 	var rewardList []*protodata.RewardData
-	for i := this.Role.SignTimes; i < this.Role.SignTimes+7; i++ {
+	for i := this.Role.SignNum; i < this.Role.SignNum+7; i++ {
 
 		c, d, s, g := signReward(i)
 
@@ -46,7 +46,7 @@ func (this *Connect) Sign() error {
 		rewardList = append(rewardList, temp)
 	}
 
-	coin, diamond, action, generalId := signReward(this.Role.SignTimes)
+	coin, diamond, action, generalId := signReward(this.Role.SignNum)
 	if coin > 0 {
 		this.Role.AddCoin(coin, models.FINANCE_SIGN_GET, fmt.Sprintf("signDay : %d", signDay))
 	} else if diamond > 0 {

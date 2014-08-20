@@ -54,7 +54,7 @@ func (this RoleModel) Insert(uid int64) *RoleData {
 	RoleData.Uid = uid
 	RoleData.Coin = Lua.GetInt("new_coin")
 	RoleData.Diamond = Lua.GetInt("new_diamond")
-	RoleData.GeneralConfigId = Lua.GetInt("new_leader")
+	RoleData.GeneralBaseId = Lua.GetInt("new_leader")
 	RoleData.UnixTime = time.Now().Unix()
 
 	Lua.Close()
@@ -102,10 +102,10 @@ type RoleData struct {
 	UnlimitedNum    int    `db:"role_unlimited_num"`
 	KillNum         int    `db:"role_kill_num"`
 	SignDate        string `db:"role_sign_date"`
-	SignTimes       int    `db:"role_sign_times"`
+	SignNum         int    `db:"role_sign_num"`
 	BuyActionDate   string `db:"role_buy_action_date"` // 购买体力日期
 	BuyActionNum    int    `db:"role_buy_action_num"`  // 购买体力次数
-	GeneralConfigId int    `db:"general_config_id"`
+	GeneralBaseId   int    `db:"general_base_id"`
 	UnixTime        int64  `db:"role_time"`
 }
 
@@ -272,15 +272,15 @@ func (this *RoleData) DiamondIntoCoin(diamond int, coin int, desc string) error 
 	return err
 }
 
-func (this *RoleData) SetGeneralConfigId(configId int) error {
+func (this *RoleData) SetGeneralConfigId(baseId int) error {
 
-	temp := this.GeneralConfigId
-	this.GeneralConfigId = configId
+	temp := this.GeneralBaseId
+	this.GeneralBaseId = baseId
 	this.UnixTime = time.Now().Unix()
 
 	_, err := DB().Update(this)
 	if err != nil {
-		this.GeneralConfigId = temp
+		this.GeneralBaseId = temp
 	}
 	return err
 }
@@ -328,7 +328,7 @@ func (this *RoleData) SetGeneralConfigId(configId int) error {
 func (this *RoleData) Sign() error {
 
 	temp1 := this.SignDate
-	temp2 := this.SignTimes
+	temp2 := this.SignNum
 	now := time.Now()
 	this.UnixTime = now.Unix()
 	if this.SignDate == now.Format("20060102") {
@@ -336,9 +336,9 @@ func (this *RoleData) Sign() error {
 	}
 
 	if this.SignDate == now.AddDate(0, 0, -1).Format("20060102") {
-		this.SignTimes++
+		this.SignNum++
 	} else {
-		this.SignTimes = 1
+		this.SignNum = 1
 	}
 
 	this.SignDate = now.Format("20060102")
@@ -346,7 +346,7 @@ func (this *RoleData) Sign() error {
 	_, err := DB().Update(this)
 	if err != nil {
 		this.SignDate = temp1
-		this.SignTimes = temp2
+		this.SignNum = temp2
 	}
 
 	return err

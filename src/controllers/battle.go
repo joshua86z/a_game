@@ -124,7 +124,7 @@ func (this *Connect) BattleResult() error {
 	response := &protodata.FightEndResponse{Role: roleProto(this.Role)}
 
 	if killNum > 0 {
-		general := models.General.General(this.Uid, this.Role.GeneralConfigId)
+		general := models.General.General(this.Uid, this.Role.GeneralBaseId)
 		general.AddKillNum(killNum)
 		response.General = generalProto(general, models.BaseGeneral(general.BaseId, nil))
 	}

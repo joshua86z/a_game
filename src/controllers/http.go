@@ -16,16 +16,8 @@ func init() {
 		port := Lua.GetInt("httpPort")
 		Lua.Close()
 		http.HandleFunc("/confirm", httpConfirm)
-//		http.HandleFunc("/adddiamond", httpAddDiamond)
 		http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	}()
-}
-
-func getPlayer(uid int64) (*Connect, bool) {
-	playLock.Lock()
-	conn, ok := playerMap[uid]
-	playLock.Unlock()
-	return conn, ok
 }
 
 func httpConfirm(w http.ResponseWriter, r *http.Request) {
@@ -46,17 +38,17 @@ func httpConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, ok := getPlayer(OrderModel.Uid)
+	conn := playerMap.Get(OrderModel.Uid)
 
 	var RoleData *models.RoleData
-	if ok && conn.Role != nil {
+	if conn != nil && conn.Role != nil {
 		RoleData = conn.Role
 	} else {
 		RoleData = models.Role.Role(OrderModel.Uid)
 	}
 
 	err = OrderModel.Confirm(RoleData)
-	if ok {
+	if conn != nil {
 		var code int = StatusOK
 		var result interface{}
 		if err != nil {

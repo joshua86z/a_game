@@ -43,30 +43,9 @@ func (this *Connect) pushToClient() {
 	}()
 }
 
-// 同一个账号只有一个连接
-func (this *Connect) InMap(uid int64) {
-	this.Uid = uid
-	playLock.Lock()
-	if val, ok := playerMap[this.Uid]; !ok {
-		playerMap[this.Uid] = this
-	} else {
-		if this.Conn != val.Conn {
-			val.Conn.Close()
-			playerMap[this.Uid] = this
-		}
-	}
-	playLock.Unlock()
-}
-
 func (this *Connect) Close() {
-	playLock.Lock()
-	if val, ok := playerMap[this.Uid]; ok {
-		if this.Conn == val.Conn {
-			delete(playerMap, this.Uid)
-		}
-	}
-	playLock.Unlock()
 	this.Conn.Close()
+	close(this.Chan)
 }
 
 // 从客户端读取信息
@@ -90,6 +69,7 @@ func (this *Connect) PullFromClient() {
 			} else {
 				log.Warn("Can't receive message. %v", err)
 			}
+			playerMap.Delete(this.Uid, this)
 			return
 		}
 
@@ -128,7 +108,7 @@ func (this *Connect) PullFromClient() {
 					this.Role.UpdateDate()
 				}
 			}
-			this.InMap(uid)
+			//playerMap.Set(uid, this)
 		}
 
 		if this.Uid > 0 {

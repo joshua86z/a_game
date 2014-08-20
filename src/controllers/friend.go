@@ -37,7 +37,7 @@ func (this *Connect) FriendList() error {
 		fdata.Uid = proto.Int64(f.Uid)
 		fdata.Num = proto.Int32(int32(index + 1))
 		fdata.Point = proto.Int32(int32(f.KillNum))
-		fdata.LeaderId = proto.Int32(int32(f.GeneralConfigId))
+		fdata.LeaderId = proto.Int32(int32(f.GeneralBaseId))
 		fdata.Name = proto.String(f.Name)
 		if _, ok := FriendAction.Map[f.Uid]; ok {
 			fdata.IsGive = proto.Bool(true)
@@ -65,7 +65,7 @@ func (this *Connect) FriendList() error {
 		fdata.Uid = proto.Int64(f.Uid)
 		fdata.Num = proto.Int32(int32(index + 1))
 		fdata.Point = proto.Int32(int32(f.UnlimitedMaxNum))
-		fdata.LeaderId = proto.Int32(int32(f.GeneralConfigId))
+		fdata.LeaderId = proto.Int32(int32(f.GeneralBaseId))
 		fdata.Name = proto.String(f.Name)
 		if _, ok := FriendAction.Map[f.Uid]; ok {
 			fdata.IsGive = proto.Bool(true)

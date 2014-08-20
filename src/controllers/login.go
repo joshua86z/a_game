@@ -68,8 +68,10 @@ func (this *Connect) Login() error {
 	}
 
 	log.Info("Exec -> login (uid:%d)", user.Uid)
-	this.InMap(user.Uid)
+
+	this.Uid = user.Uid
 	this.Role = models.Role.Role(user.Uid)
+	playerMap.Set(user.Uid, this)
 
 	response := &protodata.LoginResponse{TokenStr: proto.String(token)}
 	return this.Send(StatusOK, response)
