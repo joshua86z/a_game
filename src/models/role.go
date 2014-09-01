@@ -1,7 +1,6 @@
 package models
 
 import (
-	"database/sql"
 	"fmt"
 	"libs/lua"
 	"strconv"
@@ -18,37 +17,20 @@ type RoleModel struct {
 func init() {
 	Role.MaxActionValue = 5
 	Role.ActionWaitTime = 1800
-	var RoleData RoleData
-	DB().AddTableWithName(RoleData, "role").SetKeys(false, "Uid")
+	DB().AddTableWithName(RoleData{}, "role").SetKeys(false, "Uid")
 }
 
-func (this RoleModel) Role(uid int64) *RoleData {
-
+func (this RoleModel) Role(uid int64) (*RoleData, error) {
 	RoleData := new(RoleData)
-	if err := DB().SelectOne(RoleData, "SELECT * FROM role WHERE uid = ?", uid); err != nil {
-		if err == sql.ErrNoRows {
-			return nil
-			//			RoleData.Uid = uid
-			//			RoleData.Coin = 10000
-			//			RoleData.Diamond = 10000
-			//			RoleData.ActionTime = time.Now().Unix()
-			//			RoleData.UnixTime = RoleData.ActionTime
-			//			if err = DB().Insert(&RoleData); err != nil {
-			//				DBError(err)
-			//			} else {
-			//				return NewRoleData(uid)
-			//			}
-		} else {
-			DBError(err)
-		}
-	}
-
-	return RoleData
+	return RoleData, DB().SelectOne(RoleData, "SELECT * FROM role WHERE uid = ?", uid)
 }
 
-func (this RoleModel) Insert(uid int64) *RoleData {
+func (this RoleModel) Insert(uid int64) (*RoleData, error) {
 
-	Lua, _ := lua.NewLua("conf/role.lua")
+	Lua, err := lua.NewLua("conf/role.lua")
+	if err != nil {
+		return nil, err
+	}
 
 	RoleData := new(RoleData)
 	RoleData.Uid = uid
@@ -60,18 +42,15 @@ func (this RoleModel) Insert(uid int64) *RoleData {
 	Lua.Close()
 
 	if err := DB().Insert(RoleData); err != nil {
-		DBError(err)
+		return nil, err
 	}
 
-	return RoleData
+	return RoleData, nil
 }
 
-func (this RoleModel) NumberByRoleName(name string) int64 {
+func (this RoleModel) NumberByRoleName(name string) (int64, error) {
 	n, err := DB().SelectInt("SELECT COUNT(*) FROM role WHERE role_name = ?", name)
-	if err != nil {
-		DBError(err)
-	}
-	return n
+	return n, err
 }
 
 func (this RoleModel) FriendList(uids []int64) []*RoleData {
@@ -272,7 +251,7 @@ func (this *RoleData) DiamondIntoCoin(diamond int, coin int, desc string) error 
 	return err
 }
 
-func (this *RoleData) SetGeneralConfigId(baseId int) error {
+func (this *RoleData) SetGeneralBaseId(baseId int) error {
 
 	temp := this.GeneralBaseId
 	this.GeneralBaseId = baseId

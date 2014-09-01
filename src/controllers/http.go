@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	//	"code.google.com/p/goprotobuf/proto"
 	"fmt"
 	"libs/log"
 	"libs/lua"
 	"models"
 	"net/http"
 	_ "net/http/pprof"
+	"protodata"
 )
 
 func init() {
@@ -44,17 +46,19 @@ func httpConfirm(w http.ResponseWriter, r *http.Request) {
 	if conn != nil && conn.Role != nil {
 		RoleData = conn.Role
 	} else {
-		RoleData = models.Role.Role(OrderModel.Uid)
+		RoleData, err = models.Role.Role(OrderModel.Uid)
+		if err != nil {
+			return
+		}
 	}
 
-	err = OrderModel.Confirm(RoleData)
+	if err = OrderModel.Confirm(RoleData); err != nil {
+		log.Warn("PAY FAIL order_id: %s , %v", orderId, err)
+	}
+
 	if conn != nil {
-		var code int = StatusOK
-		var result interface{}
-		if err != nil {
-			code = lineNum()
-			result = err
-		}
-		conn.Send(code, result)
+		*conn.Request.CmdId = 10121
+		*conn.Request.CmdIndex = 10121
+		conn.Send(StatusOK, &protodata.PaySuccessResponse{Role: roleProto(RoleData)})
 	}
 }

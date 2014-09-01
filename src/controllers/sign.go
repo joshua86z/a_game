@@ -3,6 +3,7 @@ package controllers
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"fmt"
+	"libs/lua"
 	"models"
 	"protodata"
 	"time"
@@ -17,7 +18,9 @@ func (this *Connect) Sign() error {
 		signDay = 7
 	}
 
-	response.SignReward = &protodata.SignRewardData{SignDay: proto.Int32(int32(signDay))}
+	response.SignReward = &protodata.SignRewardData{
+		SignDay: proto.Int32(int32(signDay)),
+		Reward:  signProto()}
 
 	if this.Role.SignDate == time.Now().Format("20060102") {
 		response.Role = roleProto(this.Role)
@@ -71,4 +74,34 @@ func (this *Connect) Sign() error {
 
 	response.Role = roleProto(this.Role)
 	return this.Send(StatusOK, response)
+}
+
+func signProto() []*protodata.RewardData {
+
+	var result []*protodata.RewardData
+	Lua, _ := lua.NewLua("conf/sign_reward.lua")
+
+	for i := 1; i <= 7; i++ {
+
+		//Lua.L.GetGlobal("signReward")
+		Lua.L.DoString(fmt.Sprintf("coin, diamond, action, generalId = signReward(%d)", i))
+		coin := Lua.GetInt("coin")
+		diamond := Lua.GetInt("diamond")
+		action := Lua.GetInt("action")
+		generalId := Lua.GetInt("generalId")
+
+		temp := new(protodata.RewardData)
+		temp.RewardCoin = proto.Int32(int32(coin))
+		temp.RewardDiamond = proto.Int32(int32(diamond))
+		temp.Stamina = proto.Int32(int32(action))
+		if generalId > 0 {
+			config := models.BaseGeneral(generalId, nil)
+			temp.General = generalProto(new(models.GeneralData), config)
+		}
+
+		result = append(result, temp)
+	}
+
+	Lua.Close()
+	return result
 }

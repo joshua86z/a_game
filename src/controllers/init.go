@@ -38,6 +38,7 @@ func (p *PlayerMap) Set(uid int64, connect *Connect) {
 	defer p.Lock.Unlock()
 	if val, ok := p.Map[uid]; ok {
 		if connect.Conn != val.Conn {
+			val.Conn.Write(ReturnStr(val.Request, 2, nil))
 			val.Conn.Close()
 		}
 	}
@@ -52,7 +53,7 @@ func (p *PlayerMap) Delete(uid int64, connect *Connect) {
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-	gameToken = token.NewToken(&token.Adapter{})
+	gameToken = token.NewToken(token.NewAdapter())
 	playerMap = new(PlayerMap)
 	playerMap.Lock = new(sync.RWMutex)
 	playerMap.Map = make(map[int64]*Connect)

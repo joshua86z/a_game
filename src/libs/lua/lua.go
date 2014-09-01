@@ -2,103 +2,145 @@ package lua
 
 //*
 import (
-	"bufio"
+	"encoding/json"
+	"fmt"
+	"math/rand"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
-type l struct {
+type myLua struct {
+	luaExe  string
+	require string
+	json    map[string]interface{}
 }
 
-func (this l) GetGlobal(s string) {
+func (this *myLua) GetGlobal(s string) {
 }
 
-func (this l) DoString(s string) {
-}
+func (this *myLua) DoString(s string) {
 
-type setting struct {
-	settingMap map[string]string
-	L          l
-}
+	rand.Seed(int64(time.Now().Nanosecond()))
+	path := filepath.Dir(os.Args[0])
+	file := path + "\\" + fmt.Sprintf("%d%d.lua", time.Now().Nanosecond(), rand.Intn(10000))
 
-func NewLua(file string) (*setting, error) {
+	f, _ := os.OpenFile(file, os.O_RDWR|os.O_CREATE, 0664)
 
-	s := setting{}
-	s.settingMap = make(map[string]string)
+	argStr := strings.Split(s, "=")[0]
+	argStr = strings.Replace(argStr, " ", "", len(argStr))
+	argArr := strings.Split(argStr, ",")
 
-	defaultFile := filepath.Dir(os.Args[0]) + "/" + file
+	content := fmt.Sprintf(`require("%s")
+require("lua/json")
+%s
 
-	f, err := os.Open(defaultFile)
-	defer f.Close()
+result = {}`, this.require, s)
 
-	if err != nil {
-		f, err = os.Open(file)
-		if err != nil {
-			return nil, err
-		}
+	for _, val := range argArr {
+		content += fmt.Sprintf(`
+result['%s'] = %s`, val, val)
 	}
 
-	bufferedReader := bufio.NewReader(f)
-	for {
+	content += "\n\nprint(json.encode(result))"
 
-		line, err := bufferedReader.ReadString('\n')
-		if err != nil && line == "" {
-			break
-		} else {
-			if strings.HasPrefix(line, "--") {
-				continue
-			}
-			array := strings.Split(line, "=")
-			if len(array) > 1 {
-				if len(array) == 2 {
-					s.settingMap[trim(array[0])] = trim(array[1])
-				} else {
-					temp := array[1:]
-					s.settingMap[trim(array[0])] = trim(strings.Join(temp, ":"))
-				}
-			}
-		}
+	f.WriteString(content)
+	f.Close()
+
+	cmd := exec.Command(this.luaExe, file)
+	p, _ := cmd.Output()
+	s = string(p)
+	s = strings.Replace(s, "\r\n", "", len(s))
+	fmt.Println(s)
+
+	data := make(map[string]interface{})
+	json.Unmarshal([]byte(s), &data)
+	this.json = data
+
+	os.Remove(file)
+}
+
+type Lua struct {
+	luaExe  string
+	require string
+	L       *myLua
+}
+
+func NewLua(file string) (*Lua, error) {
+
+	path := filepath.Dir(os.Args[0])
+	path = strings.Replace(path, "\\", "\\", len(path))
+	s := new(Lua)
+	s.luaExe = "C:\\Lua\\lua.exe"
+	s.require = strings.Replace(file, ".lua", "", len(file))
+	s.L = &myLua{require: s.require}
+	s.L.luaExe = s.luaExe
+	s.L.json = make(map[string]interface{})
+	return s, nil
+}
+
+func (this *Lua) GetString(s string) string {
+	if val, ok := this.L.json[s]; ok {
+		return val.(string)
 	}
-
-	return &s, nil
+	return this.write(s)
 }
 
-func (this *setting) GetString(s string) string {
-	if setting, ok := this.settingMap[s]; !ok {
-		return ""
-	} else {
-		return setting
+func (this *Lua) GetInt(s string) int {
+	if val, ok := this.L.json[s]; ok {
+		return int(val.(float64))
 	}
+	i, _ := strconv.Atoi(this.write(s))
+	return i
 }
 
-func (this *setting) GetInt(s string) int {
-	if setting, ok := this.settingMap[s]; !ok {
-		return 0
-	} else {
-		intVal, err := strconv.Atoi(setting)
-		if err != nil {
-			return 0
-		}
-		return intVal
-	}
+func (this *Lua) GetBool(s string) bool {
+	return false
 }
 
-func (this *setting) GetBool(s string) bool {
-	return true
-}
+func (this *Lua) Close() error {
 
-func (this *setting) Close() error {
 	return nil
 }
 
-func trim(s string) string {
-	s = strings.Replace(s, "\\\\,", "\\,", len(s))
-	return strings.Trim(s, "\t\n\r \"")
+// 写文件
+func (this *Lua) write(s string) string {
+
+	rand.Seed(int64(time.Now().Nanosecond()))
+	path := filepath.Dir(os.Args[0])
+	file := path + "\\" + fmt.Sprintf("%d%d.lua", time.Now().Nanosecond(), rand.Intn(10000))
+
+	f, _ := os.OpenFile(file, os.O_RDWR|os.O_CREATE, 0664)
+
+	defer os.Remove(file)
+	defer f.Close()
+
+	//require := this.require
+
+	//if this.L.file != "" {
+	//	//arrStr := strings.Replace(this.L.file, ".lua", "", len(this.L.file))
+	//	//array := strings.Split(arrStr, "\\")
+	//	//require = array[len(array)-1]
+	//}
+	content := fmt.Sprintf(`require("%s")
+if %s ~= nil then
+	print(%s)
+end`, this.require, s, s)
+
+	f.WriteString(content)
+
+	cmd := exec.Command(this.luaExe, file)
+	p, _ := cmd.Output()
+	s = string(p)
+	s = strings.Replace(s, "\r\n", "", len(s))
+	fmt.Println(s)
+	return s
 }
 
-/*///*
+/*/ //*
 import (
 	"github.com/fhbzyc/golua/lua"
 	"os"

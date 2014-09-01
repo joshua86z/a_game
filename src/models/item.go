@@ -7,7 +7,6 @@ import (
 
 // role_items
 type ItemData struct {
-	Id       int    `db:"item_id"`
 	Uid      int64  `db:"uid"`
 	BaseId   int    `db:"item_base_id"`
 	Name     string `db:"item_name"`
@@ -16,7 +15,7 @@ type ItemData struct {
 }
 
 func init() {
-	DB().AddTableWithName(ItemData{}, "role_items").SetKeys(true, "Id")
+	DB().AddTableWithName(ItemData{}, "role_items").SetKeys(false, "Uid", "BaseId")
 }
 
 var Item ItemModel

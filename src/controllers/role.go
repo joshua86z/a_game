@@ -185,7 +185,8 @@ func (this *Connect) SetRoleName() error {
 	}
 
 	// 判断是否存在此用户名
-	if n := models.Role.NumberByRoleName(name); n > 0 {
+
+	if n, _ := models.Role.NumberByRoleName(name); n > 0 {
 		return this.Send(lineNum(), fmt.Errorf("这个名字已被使用"))
 	}
 

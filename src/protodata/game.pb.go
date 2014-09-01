@@ -796,5 +796,22 @@ func (m *GiveStaminaResponse) GetUid() int64 {
 	return 0
 }
 
+// *************************************充值成功**********************************
+type PaySuccessResponse struct {
+	Role             *RoleData `protobuf:"bytes,1,opt,name=role" json:"role,omitempty"`
+	XXX_unrecognized []byte    `json:"-"`
+}
+
+func (m *PaySuccessResponse) Reset()         { *m = PaySuccessResponse{} }
+func (m *PaySuccessResponse) String() string { return proto.CompactTextString(m) }
+func (*PaySuccessResponse) ProtoMessage()    {}
+
+func (m *PaySuccessResponse) GetRole() *RoleData {
+	if m != nil {
+		return m.Role
+	}
+	return nil
+}
+
 func init() {
 }

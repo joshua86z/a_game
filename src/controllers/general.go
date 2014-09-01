@@ -102,7 +102,7 @@ func (this *Connect) SetLeader() error {
 	if !find {
 		return this.Send(lineNum(), fmt.Errorf("武将没有解锁"))
 	}
-	if err := this.Role.SetGeneralConfigId(generalId); err != nil {
+	if err := this.Role.SetGeneralBaseId(generalId); err != nil {
 		return this.Send(lineNum(), err)
 	}
 
@@ -131,8 +131,8 @@ func generalProtoList(generalList []*models.GeneralData, configs map[int]*models
 
 func generalProto(general *models.GeneralData, baseGeneral *models.Base_General) *protodata.GeneralData {
 
-	var use bool
-	if general.Id == 0 {
+	var unlock bool
+	if general.BaseId == 0 {
 		general.Atk = baseGeneral.Atk
 		general.Def = baseGeneral.Def
 		general.Hp = baseGeneral.Hp
@@ -141,7 +141,7 @@ func generalProto(general *models.GeneralData, baseGeneral *models.Base_General)
 		general.Range = baseGeneral.Range
 
 	} else {
-		use = true
+		unlock = true
 	}
 
 	return &protodata.GeneralData{
@@ -160,5 +160,5 @@ func generalProto(general *models.GeneralData, baseGeneral *models.Base_General)
 		LevelUpCoin: proto.Int32(int32(baseGeneral.LevelUpCoin[general.Level])),
 		BuyDiamond:  proto.Int32(int32(baseGeneral.BuyDiamond)),
 		KillNum:     proto.Int32(int32(general.KillNum)),
-		IsUnlock:    proto.Bool(use)}
+		IsUnlock:    proto.Bool(unlock)}
 }

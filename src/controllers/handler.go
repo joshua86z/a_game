@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"code.google.com/p/go.net/websocket"
+	"database/sql"
 	"fmt"
 	"libs/log"
 	"models"
@@ -27,7 +28,7 @@ func (this *Connect) Send(status int, value interface{}) error {
 		log.Error("linuNum -> %d : %v", status, value)
 	}
 	this.Chan <- ReturnStr(this.Request, status, value)
-	this.Request = nil
+	//this.Request = nil
 	return nil
 }
 
@@ -52,7 +53,6 @@ func (this *Connect) Close() {
 func (this *Connect) PullFromClient() {
 
 	for {
-		// Panic recover
 		defer func() {
 			if err := recover(); err != nil {
 				log.Critical("Panic occur. %v", err)
@@ -64,11 +64,7 @@ func (this *Connect) PullFromClient() {
 		var content []byte
 		err := websocket.Message.Receive(this.Conn, &content)
 		if err != nil {
-			if err.Error() == "EOF" {
-				log.Info("Conn receive EOF")
-			} else {
-				log.Warn("Can't receive message. %v", err)
-			}
+			log.Info("Websocket Error: %v", err)
 			playerMap.Delete(this.Uid, this)
 			return
 		}
@@ -85,35 +81,9 @@ func (this *Connect) PullFromClient() {
 		}
 
 		if this.Request.GetCmdId() != LOGIN {
-			// Check Login status
-			if this.Request.GetTokenStr() == "" {
-				this.Send(2, nil)
+			if !this.verify(this.Request.GetTokenStr()) {
 				continue
 			}
-			uid, _ := gameToken.GetUid(this.Request.GetTokenStr())
-			if uid == 0 {
-				this.Send(2, nil)
-				continue
-			} else {
-				if this.Role == nil {
-					this.Role = models.Role.Role(uid)
-					if this.Role == nil {
-						this.Role = models.Role.Insert(uid)
-					}
-
-				} else if this.Role.Uid != uid {
-					this.Send(2, nil)
-					continue
-				} else {
-					this.Role.UpdateDate()
-				}
-			}
-			//playerMap.Set(uid, this)
-		}
-
-		if this.Uid > 0 {
-			log.Info("Exec -> %d (uid:%d)", this.Request.GetCmdId(), this.Uid)
-			models.InsertRequestLog(this.Uid, this.Request.GetCmdId())
 		}
 
 		this.Function(this.Request.GetCmdId())()
@@ -171,4 +141,42 @@ func (this *Connect) Function(index int32) func() error {
 			return this.Send(lineNum(), fmt.Sprintf("没有这方法 index : %d", index))
 		}
 	}
+}
+
+func (this *Connect) verify(token string) bool {
+
+	if token == "" {
+		this.Send(2, nil)
+		return false
+	}
+	uid, _ := gameToken.GetUid(token)
+	if uid == 0 {
+		this.Send(2, nil)
+		return false
+	}
+	if this.Role == nil {
+		this.Uid = uid
+		Role, err := models.Role.Role(uid)
+		if err == sql.ErrNoRows {
+			if Role, err = models.Role.Insert(uid); err != nil {
+				// 插入失败
+				return false
+			}
+		} else if err != nil {
+			this.Send(lineNum(), err)
+			return false
+		}
+		this.Role = Role
+		playerMap.Set(uid, this)
+
+	} else if this.Role.Uid != uid {
+		this.Send(2, nil)
+		return false
+	} else {
+		this.Role.UpdateDate()
+	}
+
+	log.Info("Exec -> %d (uid:%d)", this.Request.GetCmdId(), this.Uid)
+	models.InsertRequestLog(this.Uid, this.Request.GetCmdId())
+	return true
 }

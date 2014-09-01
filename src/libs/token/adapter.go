@@ -5,24 +5,26 @@ import (
 	"sync"
 )
 
+func NewAdapter() *Adapter {
+	return &Adapter{Map: make(map[string]string)}
+}
+
 type Adapter struct {
-	sync.Mutex
+	sync.RWMutex
 	Map map[string]string
 }
 
 func (this *Adapter) Set(key string, value string) error {
 	this.Lock()
-	this.make()
 	this.Map[key] = value
 	this.Unlock()
 	return nil
 }
 
 func (this *Adapter) Get(key string) (string, error) {
-	this.Lock()
-	this.make()
+	this.RLock()
 	str, ok := this.Map[key]
-	this.Unlock()
+	this.RUnlock()
 	if !ok {
 		return "", fmt.Errorf("can't find this token : %s", key)
 	} else {
@@ -32,14 +34,7 @@ func (this *Adapter) Get(key string) (string, error) {
 
 func (this *Adapter) Delete(key string) error {
 	this.Lock()
-	this.make()
 	delete(this.Map, key)
 	this.Unlock()
 	return nil
-}
-
-func (this *Adapter) make() {
-	if this.Map == nil {
-		this.Map = make(map[string]string)
-	}
 }

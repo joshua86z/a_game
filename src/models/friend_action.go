@@ -5,7 +5,7 @@ import (
 )
 
 func init() {
-	DB().AddTableWithName(FriendActionModel{}, "friend_action").SetKeys(true, "Id")
+	DB().AddTableWithName(FriendActionModel{}, "friend_action").SetKeys(false, "Uid" , "Fid", "Date")
 }
 
 type FriendAction struct {
@@ -15,7 +15,6 @@ type FriendAction struct {
 
 // friend_action
 type FriendActionModel struct {
-	Id   int    `db:"id"`
 	Uid  int64  `db:"uid"`
 	Fid  int64  `db:"friend_uid"`
 	Date string `db:"date"`

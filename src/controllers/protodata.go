@@ -50,9 +50,9 @@ func Return(r *protodata.CommandRequest, status int, obj interface{}) *protodata
 
 	return &protodata.CommandResponse{
 		Status:           &code,
-		CmdId:            proto.Int32(r.GetCmdId()),
-		TokenStr:         proto.String(r.GetTokenStr()),
-		CmdIndex:         proto.Int32(r.GetCmdIndex()),
+		CmdId:            r.CmdId,
+		TokenStr:         r.TokenStr,
+		CmdIndex:         r.CmdIndex,
 		SerializedString: serStr,
 	}
 }

@@ -7,7 +7,6 @@ import (
 
 // role_generals
 type GeneralData struct {
-	Id       int    `db:"general_id"`
 	Uid      int64  `db:"uid"`
 	BaseId   int    `db:"general_base_id"`
 	Name     string `db:"general_name"`
@@ -23,7 +22,7 @@ type GeneralData struct {
 }
 
 func init() {
-	DB().AddTableWithName(GeneralData{}, "role_generals").SetKeys(true, "Id")
+	DB().AddTableWithName(GeneralData{}, "role_generals").SetKeys(false, "Uid", "BaseId")
 }
 
 var General GeneralModel

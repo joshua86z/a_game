@@ -70,7 +70,9 @@ func (this *Connect) Login() error {
 	log.Info("Exec -> login (uid:%d)", user.Uid)
 
 	this.Uid = user.Uid
-	this.Role = models.Role.Role(user.Uid)
+	if Role, err := models.Role.Role(user.Uid); err == nil {
+		this.Role = Role
+	}
 	playerMap.Set(user.Uid, this)
 
 	response := &protodata.LoginResponse{TokenStr: proto.String(token)}

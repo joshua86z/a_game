@@ -7,7 +7,6 @@ import (
 
 // role_duplicates
 type DuplicateData struct {
-	Id       int   `db:"duplicate_id"`
 	Uid      int64 `db:"uid"`
 	Chapter  int   `db:"duplicate_chapter"`
 	Section  int   `db:"duplicate_section"`
@@ -15,7 +14,7 @@ type DuplicateData struct {
 }
 
 func init() {
-	DB().AddTableWithName(DuplicateData{}, "role_duplicates").SetKeys(true, "Id")
+	DB().AddTableWithName(DuplicateData{}, "role_duplicates").SetKeys(false, "Uid", "Chapter", "Section")
 }
 
 type DuplicateModel struct {
@@ -41,15 +40,6 @@ func NewDuplicateModel(uid int64) *DuplicateModel {
 
 func (this *DuplicateModel) List() []*DuplicateData {
 	return this.DuplicateList
-}
-
-func (this *DuplicateModel) GetDuplicate(duplicateId int) *DuplicateData {
-	for _, duplicate := range this.DuplicateList {
-		if duplicate.Id == duplicateId {
-			return duplicate
-		}
-	}
-	return nil
 }
 
 func (this *DuplicateModel) Insert(chapter int, section int) *DuplicateData {

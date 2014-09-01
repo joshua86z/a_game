@@ -31,8 +31,11 @@ func (this *Connect) FriendList() error {
 
 	// --------- 临时写法 --------- //
 
+	var find bool
 	for index, f := range friendList {
-
+		if f.Uid == this.Uid {
+			find = true
+		}
 		fdata := new(protodata.FriendData)
 		fdata.Uid = proto.Int64(f.Uid)
 		fdata.Num = proto.Int32(int32(index + 1))
@@ -44,6 +47,26 @@ func (this *Connect) FriendList() error {
 		} else {
 			fdata.IsGive = proto.Bool(false)
 		}
+		list1 = append(list1, fdata)
+	}
+
+	if !find {
+		fdata := new(protodata.FriendData)
+		if this.Role.KillNum == friendList[len(friendList)-1].KillNum {
+			*fdata.Num = *list1[len(list1)-1].Num + 1
+		} else {
+			sql := "SELECT COUNT(*) FROM `role` WHERE `role_kill_num` > ?"
+			num, err := models.DB().SelectInt(sql, this.Role.KillNum)
+			if err != nil {
+				return this.Send(lineNum(), err)
+			}
+			fdata.Num = proto.Int32(int32(num + 1))
+		}
+		fdata.Uid = proto.Int64(this.Role.Uid)
+		fdata.Point = proto.Int32(int32(this.Role.KillNum))
+		fdata.LeaderId = proto.Int32(int32(this.Role.GeneralBaseId))
+		fdata.Name = proto.String(this.Role.Name)
+		fdata.IsGive = proto.Bool(true)
 		list1 = append(list1, fdata)
 	}
 
@@ -60,7 +83,11 @@ func (this *Connect) FriendList() error {
 	//	}
 	//}
 
+	find = false
 	for index, f := range friendList {
+		if f.Uid == this.Uid {
+			find = true
+		}
 		fdata := new(protodata.FriendData)
 		fdata.Uid = proto.Int64(f.Uid)
 		fdata.Num = proto.Int32(int32(index + 1))
@@ -72,6 +99,26 @@ func (this *Connect) FriendList() error {
 		} else {
 			fdata.IsGive = proto.Bool(false)
 		}
+		list2 = append(list2, fdata)
+	}
+
+	if !find {
+		fdata := new(protodata.FriendData)
+		if this.Role.UnlimitedMaxNum == friendList[len(friendList)-1].UnlimitedMaxNum {
+			*fdata.Num = *list1[len(list1)-1].Num + 1
+		} else {
+			sql := "SELECT COUNT(*) FROM `role` WHERE `role_unlimited_max_num` > ?"
+			num, err := models.DB().SelectInt(sql, this.Role.UnlimitedMaxNum)
+			if err != nil {
+				return this.Send(lineNum(), err)
+			}
+			fdata.Num = proto.Int32(int32(num + 1))
+		}
+		fdata.Uid = proto.Int64(this.Role.Uid)
+		fdata.Point = proto.Int32(int32(this.Role.UnlimitedMaxNum))
+		fdata.LeaderId = proto.Int32(int32(this.Role.GeneralBaseId))
+		fdata.Name = proto.String(this.Role.Name)
+		fdata.IsGive = proto.Bool(true)
 		list2 = append(list2, fdata)
 	}
 
