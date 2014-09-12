@@ -9,17 +9,9 @@ import (
 type Config_Pay_Center struct {
 	Id      int    `db:"pay_config_id"`
 	Name    string `db:"pay_name"`
-	Rmb     int    `db:"pay_rmb"`
+	Money   int    `db:"pay_money"`
 	Diamond int    `db:"pay_diamond"`
 	Desc    string `db:"pay_desc"`
-}
-
-var config_pay_center []*Config_Pay_Center
-
-func init() {
-	if _, err := DB().Select(&config_pay_center, "SELECT * FROM `config_pay_center` ORDER BY `pay_config_id` ASC "); err != nil {
-		panic(err)
-	}
 }
 
 // 充值商店
@@ -41,7 +33,7 @@ func ConfigPayCenterList() []*Config_Pay_Center {
 		result = append(result, &Config_Pay_Center{
 			Id:      i,
 			Name:    array[0],
-			Rmb:     Atoi(array[1]),
+			Money:   Atoi(array[1]),
 			Diamond: Atoi(array[2]),
 			Desc:    array[3]})
 	}

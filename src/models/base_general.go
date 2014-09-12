@@ -67,7 +67,7 @@ func BaseGeneral(baseId int, Lua *lua.Lua) *Base_General {
 		defer Lua.Close()
 	}
 
-	Lua.L.DoString(fmt.Sprintf("Name,Type,Atk,Def,Hp,Speed,Dex,Range,AtkRange,AtkGroup,DefGroup,HpGroup,SpeedGroup,DexGroup,RangeGroup,BuyDiamond,Desc,Skillhurt = baseGeneral(%d)", baseId))
+	Lua.L.DoString(fmt.Sprintf("Name,Type,Atk,Def,Hp,Speed,Dex,Range,AtkRange,AtkGroup,DefGroup,HpGroup,SpeedGroup,DexGroup,RangeGroup,BuyDiamond,Desc,SkillAtk = baseGeneral(%d)", baseId))
 
 	name := Lua.GetString("Name")
 	if name == "" {

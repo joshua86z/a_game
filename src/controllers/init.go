@@ -6,6 +6,7 @@ import (
 	"libs/log"
 	"libs/token"
 	"math/rand"
+	"models"
 	"runtime"
 	"sync"
 	"time"
@@ -82,15 +83,16 @@ func SendMessage(uid int64, s []byte) error {
 
 func CountOnline() {
 	go func() {
-		t := time.Tick(time.Second * 10)
-		//t = time.Tick(time.Minute * 5)
+		//t := time.Tick(time.Second * 10)
+		t := time.Tick(time.Minute * 5)
 		for {
 			select {
 			case <-t:
 				playerMap.Lock.RLock()
-				fmt.Println("online num : ", len(playerMap.Map))
+				online := len(playerMap.Map)
 				playerMap.Lock.RUnlock()
-				//models.DB().Exec("INSERT INTO `stat_online`(`online_num`,`online_time`) VALUES (? , NOW())", online)
+				fmt.Println("Online Num:", online)
+				models.DB().Exec("INSERT INTO `stat_online`(`online_num`,`online_time`) VALUES (? , NOW())", online)
 			}
 		}
 	}()

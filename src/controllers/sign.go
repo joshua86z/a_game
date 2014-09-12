@@ -13,16 +13,16 @@ func (this *Connect) Sign() error {
 
 	response := new(protodata.SignRewardResponse)
 
-	signDay := this.Role.SignNum % 7
-	if signDay == 0 {
-		signDay = 7
-	}
-
-	response.SignReward = &protodata.SignRewardData{
-		SignDay: proto.Int32(int32(signDay)),
-		Reward:  signProto()}
-
 	if this.Role.SignDate == time.Now().Format("20060102") {
+
+		signDay := this.Role.SignNum % 7
+		if signDay == 0 {
+			signDay = 7
+		}
+
+		response.SignReward = &protodata.SignRewardData{
+			SignDay: proto.Int32(int32(signDay)),
+			Reward:  signProto(this.Role.SignNum)}
 		response.Role = roleProto(this.Role)
 		response.SignReward.IsReceive = proto.Bool(true)
 		return this.Send(StatusOK, response)
@@ -32,22 +32,14 @@ func (this *Connect) Sign() error {
 		return this.Send(lineNum(), err)
 	}
 
-	configs := models.BaseGeneralMap()
-	var rewardList []*protodata.RewardData
-	for i := this.Role.SignNum; i < this.Role.SignNum+7; i++ {
-
-		c, d, s, g := signReward(i)
-
-		temp := new(protodata.RewardData)
-		temp.RewardCoin = proto.Int32(int32(c))
-		temp.RewardDiamond = proto.Int32(int32(d))
-		temp.Stamina = proto.Int32(int32(s))
-		if g > 0 {
-			temp.General = generalProto(new(models.GeneralData), configs[g])
-		}
-
-		rewardList = append(rewardList, temp)
+	signDay := this.Role.SignNum % 7
+	if signDay == 0 {
+		signDay = 7
 	}
+
+	response.SignReward = &protodata.SignRewardData{
+		SignDay: proto.Int32(int32(signDay)),
+		Reward:  signProto(this.Role.SignNum)}
 
 	coin, diamond, action, generalId := signReward(this.Role.SignNum)
 	if coin > 0 {
@@ -64,11 +56,15 @@ func (this *Connect) Sign() error {
 				break
 			}
 		}
-		config := configs[generalId]
+		baseGeneral := models.BaseGeneral(generalId, nil)
 		if find {
-			this.Role.AddDiamond(config.BuyDiamond, models.FINANCE_SIGN_GET, fmt.Sprintf("signDay : %d", signDay))
+			this.Role.AddDiamond(baseGeneral.BuyDiamond, models.FINANCE_SIGN_GET, fmt.Sprintf("signDay : %d", signDay))
 		} else {
-			response.General = generalProto(models.General.Insert(this.Uid, config), config)
+			general, err := models.General.Insert(this.Uid, baseGeneral)
+			if err != nil {
+				return this.Send(lineNum(), response)
+			}
+			response.General = generalProto(general, baseGeneral)
 		}
 	}
 
@@ -76,12 +72,17 @@ func (this *Connect) Sign() error {
 	return this.Send(StatusOK, response)
 }
 
-func signProto() []*protodata.RewardData {
+func signProto(day int) []*protodata.RewardData {
 
 	var result []*protodata.RewardData
 	Lua, _ := lua.NewLua("conf/sign_reward.lua")
 
-	for i := 1; i <= 7; i++ {
+	begin := day/7 - 1
+	if begin < 0 {
+		begin = 0
+	}
+	begin = begin*7 + 1
+	for i := begin; i <= begin+7; i++ {
 
 		//Lua.L.GetGlobal("signReward")
 		Lua.L.DoString(fmt.Sprintf("coin, diamond, action, generalId = signReward(%d)", i))

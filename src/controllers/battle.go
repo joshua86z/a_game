@@ -24,40 +24,46 @@ func (this *Connect) BattleRequest() error {
 		config *models.ConfigDuplicate
 	)
 
-	configs := models.ConfigDuplicateList()
-	if chapterId != 1 || sectionId != 1 {
-		for index, val := range configs {
-			if val.Chapter > chapterId {
-				break
-			}
-			if val.Chapter == chapterId && val.Section == sectionId {
-				if index > 0 {
-					index -= 1
+	if request.GetFightMode() == 0 {
 
+		configs := models.ConfigDuplicateList()
+		if chapterId != 1 || sectionId != 1 {
+			for index, val := range configs {
+				if val.Chapter > chapterId {
+					break
 				}
-				c, s = configs[index].Chapter, configs[index].Section
-				config = val
-				break
+				if val.Chapter == chapterId && val.Section == sectionId {
+					if index > 0 {
+						index -= 1
+
+					}
+					c, s = configs[index].Chapter, configs[index].Section
+					config = val
+					break
+				}
 			}
-		}
-		if c == 0 {
-			return this.Send(lineNum(), fmt.Errorf("没有这个副本"))
+			if c == 0 {
+				return this.Send(lineNum(), fmt.Errorf("没有这个副本"))
+			}
+
+			dplicateList := models.NewDuplicateModel(this.Uid).List()
+			var find bool
+			for _, val := range dplicateList {
+				if val.Chapter == c && val.Section == s {
+					find = true
+					break
+				}
+			}
+			if !find {
+				return this.Send(lineNum(), fmt.Errorf("你还没有解锁这个关卡"))
+			}
+		} else {
+			c, s = configs[0].Chapter, configs[0].Section
+			config = configs[0]
 		}
 
-		dplicateList := models.NewDuplicateModel(this.Uid).List()
-		var find bool
-		for _, val := range dplicateList {
-			if val.Chapter == c && val.Section == s {
-				find = true
-				break
-			}
-		}
-		if !find {
-			return this.Send(lineNum(), fmt.Errorf("你还没有解锁这个关卡"))
-		}
 	} else {
-		c, s = configs[0].Chapter, configs[0].Section
-		config = configs[0]
+		config = models.UnLimitDuplicate()
 	}
 
 	actionValue := this.Role.ActionValue()
@@ -73,10 +79,19 @@ func (this *Connect) BattleRequest() error {
 	if len(tempItemList) > 0 {
 		tempItemDiamond := tempItemDiamond()
 		var diamond int
-		desc := "use items: "
-		for _, val := range tempItemList {
-			diamond += tempItemDiamond[val]
-			desc += fmt.Sprintf("%d", val+1)
+		desc := "购买战斗道具: "
+		for index := range tempItemList {
+			diamond += tempItemDiamond[index]
+			switch index {
+			case 0:
+				desc += "复活 "
+			case 1:
+				desc += "加速 "
+			case 2:
+				desc += "护盾 "
+			case 3:
+				desc += "攻速"
+			}
 		}
 		if err := this.Role.SubDiamond(diamond, models.FINANCE_DUPLICATE_USE, desc); err != nil {
 			return this.Send(lineNum(), err)
@@ -121,7 +136,7 @@ func (this *Connect) BattleResult() error {
 		return this.Send(lineNum(), err)
 	}
 
-	response := &protodata.FightEndResponse{Role: roleProto(this.Role)}
+	response := new(protodata.FightEndResponse)
 
 	if killNum > 0 {
 		general := models.General.General(this.Uid, this.Role.GeneralBaseId)
@@ -199,8 +214,8 @@ func (this *Connect) BattleResult() error {
 		if baseId > 0 {
 			if general := models.General.General(this.Uid, baseId); general == nil {
 				baseGeneral := models.BaseGeneral(baseId, nil)
-				if general := models.General.Insert(this.Uid, baseGeneral); general == nil {
-					return this.Send(lineNum(), fmt.Errorf("数据库错误:新建英雄失败"))
+				if general, err := models.General.Insert(this.Uid, baseGeneral); err != nil {
+					return this.Send(lineNum(), err)
 				} else {
 					generalData = generalProto(general, baseGeneral)
 				}
@@ -243,6 +258,7 @@ func (this *Connect) BattleResult() error {
 		models.InsertAddDiamondFinanceLog(this.Uid, models.FINANCE_DUPLICATE_GET, oldDiamond, this.Role.Diamond, "")
 	}
 
+	response.Role = roleProto(this.Role)
 	return this.Send(StatusOK, response)
 }
 

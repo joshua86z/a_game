@@ -30,9 +30,9 @@ func (this *Connect) BuyGeneral() error {
 		return this.Send(lineNum(), err)
 	}
 
-	general := models.General.Insert(this.Uid, baseGeneral)
-	if general == nil {
-		return this.Send(lineNum(), fmt.Errorf("失败:数据库错误"))
+	general, err := models.General.Insert(this.Uid, baseGeneral)
+	if err != nil {
+		return this.Send(lineNum(), err)
 	}
 
 	response := &protodata.BuyGeneralResponse{
@@ -156,6 +156,7 @@ func generalProto(general *models.GeneralData, baseGeneral *models.Base_General)
 		Dex:         proto.Int32(int32(general.Dex)),
 		TriggerR:    proto.Int32(int32(general.Range)),
 		AtkR:        proto.Int32(int32(baseGeneral.AtkRange)),
+		SkillAtk:    proto.Int32(int32(baseGeneral.SkillAtk)),
 		GeneralType: proto.Int32(int32(baseGeneral.Type)),
 		LevelUpCoin: proto.Int32(int32(baseGeneral.LevelUpCoin[general.Level])),
 		BuyDiamond:  proto.Int32(int32(baseGeneral.BuyDiamond)),

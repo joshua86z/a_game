@@ -50,7 +50,7 @@ func (this *GeneralModel) General(uid int64, baseId int) *GeneralData {
 	return general
 }
 
-func (this *GeneralModel) Insert(uid int64, base *Base_General) *GeneralData {
+func (this *GeneralModel) Insert(uid int64, base *Base_General) (*GeneralData, error) {
 
 	general := new(GeneralData)
 	general.Uid = uid
@@ -65,10 +65,7 @@ func (this *GeneralModel) Insert(uid int64, base *Base_General) *GeneralData {
 	general.Range = base.Range
 	general.UnixTime = time.Now().Unix()
 
-	if err := DB().Insert(general); err != nil {
-		return nil
-	}
-	return general
+	return general, DB().Insert(general)
 }
 
 func (this *GeneralData) LevelUp(base *Base_General) error {

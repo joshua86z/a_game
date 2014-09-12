@@ -32,6 +32,7 @@ type UserDataResponse struct {
 	CoinProducts     []*CoinProductData    `protobuf:"bytes,7,rep,name=coinProducts" json:"coinProducts,omitempty"`
 	DiamondProducts  []*DiamondProductData `protobuf:"bytes,8,rep,name=diamondProducts" json:"diamondProducts,omitempty"`
 	LeaderId         *int32                `protobuf:"varint,9,opt,name=leaderId" json:"leaderId,omitempty"`
+	StaminaTimeMax   *int32                `protobuf:"varint,10,opt,name=staminaTimeMax" json:"staminaTimeMax,omitempty"`
 	XXX_unrecognized []byte                `json:"-"`
 }
 
@@ -98,6 +99,13 @@ func (m *UserDataResponse) GetDiamondProducts() []*DiamondProductData {
 func (m *UserDataResponse) GetLeaderId() int32 {
 	if m != nil && m.LeaderId != nil {
 		return *m.LeaderId
+	}
+	return 0
+}
+
+func (m *UserDataResponse) GetStaminaTimeMax() int32 {
+	if m != nil && m.StaminaTimeMax != nil {
+		return *m.StaminaTimeMax
 	}
 	return 0
 }
@@ -742,6 +750,8 @@ func (m *FriendListRequest) GetPlatId() int32 {
 type FriendListResponse struct {
 	FriendList1      []*FriendData `protobuf:"bytes,1,rep,name=friendList1" json:"friendList1,omitempty"`
 	FriendList2      []*FriendData `protobuf:"bytes,2,rep,name=friendList2" json:"friendList2,omitempty"`
+	GiveNum          *int32        `protobuf:"varint,3,opt,name=giveNum" json:"giveNum,omitempty"`
+	GiveMax          *int32        `protobuf:"varint,4,opt,name=giveMax" json:"giveMax,omitempty"`
 	XXX_unrecognized []byte        `json:"-"`
 }
 
@@ -761,6 +771,20 @@ func (m *FriendListResponse) GetFriendList2() []*FriendData {
 		return m.FriendList2
 	}
 	return nil
+}
+
+func (m *FriendListResponse) GetGiveNum() int32 {
+	if m != nil && m.GiveNum != nil {
+		return *m.GiveNum
+	}
+	return 0
+}
+
+func (m *FriendListResponse) GetGiveMax() int32 {
+	if m != nil && m.GiveMax != nil {
+		return *m.GiveMax
+	}
+	return 0
 }
 
 // *************************************送体力给好友**********************************

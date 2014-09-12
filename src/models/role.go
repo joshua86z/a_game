@@ -16,7 +16,7 @@ type RoleModel struct {
 
 func init() {
 	Role.MaxActionValue = 5
-	Role.ActionWaitTime = 1800
+	Role.ActionWaitTime = 300
 	DB().AddTableWithName(RoleData{}, "role").SetKeys(false, "Uid")
 }
 
@@ -25,28 +25,28 @@ func (this RoleModel) Role(uid int64) (*RoleData, error) {
 	return RoleData, DB().SelectOne(RoleData, "SELECT * FROM role WHERE uid = ?", uid)
 }
 
-func (this RoleModel) Insert(uid int64) (*RoleData, error) {
+//func (this RoleModel) Insert(uid int64) (*RoleData, error) {
 
-	Lua, err := lua.NewLua("conf/role.lua")
-	if err != nil {
-		return nil, err
-	}
+//	Lua, err := lua.NewLua("conf/role.lua")
+//	if err != nil {
+//		return nil, err
+//	}
 
-	RoleData := new(RoleData)
-	RoleData.Uid = uid
-	RoleData.Coin = Lua.GetInt("new_coin")
-	RoleData.Diamond = Lua.GetInt("new_diamond")
-	RoleData.GeneralBaseId = Lua.GetInt("new_leader")
-	RoleData.UnixTime = time.Now().Unix()
+//	RoleData := new(RoleData)
+//	RoleData.Uid = uid
+//	RoleData.Coin = Lua.GetInt("new_coin")
+//	RoleData.Diamond = Lua.GetInt("new_diamond")
+//	RoleData.GeneralBaseId = Lua.GetInt("new_leader")
+//	RoleData.UnixTime = time.Now().Unix()
 
-	Lua.Close()
+//	Lua.Close()
 
-	if err := DB().Insert(RoleData); err != nil {
-		return nil, err
-	}
+//	if err := DB().Insert(RoleData); err != nil {
+//		return nil, err
+//	}
 
-	return RoleData, nil
-}
+//	return RoleData, nil
+//}
 
 func (this RoleModel) NumberByRoleName(name string) (int64, error) {
 	n, err := DB().SelectInt("SELECT COUNT(*) FROM role WHERE role_name = ?", name)
@@ -358,4 +358,68 @@ func (this *RoleData) Set() error {
 	this.UnixTime = time.Now().Unix()
 	_, err := DB().Update(this)
 	return err
+}
+
+func (this RoleModel) NewRole(uid int64) (*RoleData, error) {
+
+	Lua, err := lua.NewLua("conf/role.lua")
+	if err != nil {
+		return nil, err
+	}
+
+	unixTime := time.Now().Unix()
+
+	RoleData := new(RoleData)
+	RoleData.Uid = uid
+	RoleData.Coin = Lua.GetInt("new_coin")
+	RoleData.Diamond = Lua.GetInt("new_diamond")
+	RoleData.GeneralBaseId = Lua.GetInt("new_leader")
+	RoleData.UnixTime = unixTime
+
+	Lua.Close()
+
+	Transaction, err := DB().Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			Transaction.Rollback()
+			RoleData = nil
+		} else {
+			err = Transaction.Commit()
+		}
+	}()
+
+	if err = Transaction.Insert(RoleData); err != nil {
+		return nil, err
+	}
+
+	configs := BaseGeneralMap()
+
+	baseIds := [3]int{105, 117, 123}
+	var generals []interface{}
+	for index := range baseIds {
+		base := configs[baseIds[index]]
+		general := new(GeneralData)
+		general.Uid = uid
+		general.BaseId = base.BaseId
+		general.Name = base.Name
+		general.Level = 0
+		general.Atk = base.Atk
+		general.Def = base.Def
+		general.Hp = base.Hp
+		general.Speed = base.Speed
+		general.Dex = base.Dex
+		general.Range = base.Range
+		general.UnixTime = unixTime
+		generals = append(generals, general)
+	}
+
+	if err = Transaction.Insert(generals...); err != nil {
+		return nil, err
+	}
+
+	return RoleData, err
 }

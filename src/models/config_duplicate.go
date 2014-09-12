@@ -48,3 +48,23 @@ func ConfigDuplicateList() []*ConfigDuplicate {
 
 	return result
 }
+
+func UnLimitDuplicate() *ConfigDuplicate {
+	Lua, _ := lua.NewLua("conf/duplicate.lua")
+	duplicateStr := Lua.GetString("duplicate_0")
+	if duplicateStr == "" {
+		return nil
+	}
+	array := strings.Split(duplicateStr, "\\,")
+	result := &ConfigDuplicate{
+		ConfigId:    0,
+		Chapter:     Atoi(array[0]),
+		Section:     Atoi(array[1]),
+		ChapterName: array[2],
+		SectionName: array[3],
+		Value:       array[4],
+		GenId:       Atoi(array[5])}
+
+	Lua.Close()
+	return result
+}

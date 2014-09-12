@@ -25,21 +25,21 @@ func (this *Connect) UserDataRequest() error {
 
 	configs := models.BaseGeneralMap()
 
-	var rewardList []*protodata.RewardData
-	for i := this.Role.SignNum; i < this.Role.SignNum+7; i++ {
+	//var rewardList []*protodata.RewardData
+	//for i := this.Role.SignNum; i < this.Role.SignNum+7; i++ {
 
-		c, d, s, g := signReward(i)
+	//	c, d, s, g := signReward(i)
 
-		temp := new(protodata.RewardData)
-		temp.RewardCoin = proto.Int32(int32(c))
-		temp.RewardDiamond = proto.Int32(int32(d))
-		temp.Stamina = proto.Int32(int32(s))
-		if g > 0 {
-			temp.General = generalProto(new(models.GeneralData), configs[g])
-		}
+	//	temp := new(protodata.RewardData)
+	//	temp.RewardCoin = proto.Int32(int32(c))
+	//	temp.RewardDiamond = proto.Int32(int32(d))
+	//	temp.Stamina = proto.Int32(int32(s))
+	//	if g > 0 {
+	//		temp.General = generalProto(new(models.GeneralData), configs[g])
+	//	}
 
-		rewardList = append(rewardList, temp)
-	}
+	//	rewardList = append(rewardList, temp)
+	//}
 
 	signDay := this.Role.SignNum % 7
 	if signDay == 0 {
@@ -47,7 +47,7 @@ func (this *Connect) UserDataRequest() error {
 	}
 
 	signProto := &protodata.SignRewardData{
-		Reward:    rewardList,
+		Reward:    signProto(this.Role.SignNum),
 		IsReceive: proto.Bool(isReceive),
 		SignDay:   proto.Int32(int32(signDay)),
 	}
@@ -72,20 +72,20 @@ func (this *Connect) UserDataRequest() error {
 			ProductName:    proto.String(val.Name),
 			ProductDesc:    proto.String(val.Desc),
 			ProductDiamond: proto.Int32(int32(val.Diamond)),
-			Price:          proto.Int32(int32(val.Rmb)),
+			Price:          proto.Int32(int32(val.Money)),
 		})
 	}
 
 	generalList := models.General.List(this.Uid)
-	if len(generalList) == 0 {
-		Lua, _ := lua.NewLua("conf/general.lua")
-		s := Lua.GetString("init_generals")
-		Lua.Close()
-		array := strings.Split(s, ",")
-		generalList = append(generalList, models.General.Insert(this.Uid, configs[models.Atoi(array[0])]))
-		generalList = append(generalList, models.General.Insert(this.Uid, configs[models.Atoi(array[1])]))
-		generalList = append(generalList, models.General.Insert(this.Uid, configs[models.Atoi(array[2])]))
-	}
+	//if len(generalList) == 0 {
+	//	Lua, _ := lua.NewLua("conf/general.lua")
+	//	s := Lua.GetString("init_generals")
+	//	Lua.Close()
+	//	array := strings.Split(s, ",")
+	//	generalList = append(generalList, models.General.Insert(this.Uid, configs[models.Atoi(array[0])]))
+	//	generalList = append(generalList, models.General.Insert(this.Uid, configs[models.Atoi(array[1])]))
+	//	generalList = append(generalList, models.General.Insert(this.Uid, configs[models.Atoi(array[2])]))
+	//}
 
 	if !isReceive {
 		coin, diamond, action, generalId := signReward(this.Role.SignNum)
@@ -103,18 +103,22 @@ func (this *Connect) UserDataRequest() error {
 					break
 				}
 			}
-			config := configs[generalId]
+			baseGeneral := configs[generalId]
 			if find {
-				this.Role.AddDiamond(config.BuyDiamond, models.FINANCE_SIGN_GET, fmt.Sprintf("signDay : %d", signDay))
+				this.Role.AddDiamond(baseGeneral.BuyDiamond, models.FINANCE_SIGN_GET, fmt.Sprintf("signDay : %d", signDay))
 			} else {
-				generalList = append(generalList, models.General.Insert(this.Uid, config))
+				newGeneral, err := models.General.Insert(this.Uid, baseGeneral)
+				if err != nil {
+					return this.Send(lineNum(), err)
+				}
+				generalList = append(generalList, newGeneral)
 			}
 		}
 	}
 
 	tempItemDiamond := tempItemDiamond()
 
-	response := &protodata.UserDataResponse{
+	return this.Send(StatusOK, &protodata.UserDataResponse{
 		Role:             roleProto(this.Role),
 		Items:            itemProtoList(models.Item.List(this.Uid)),
 		Generals:         generalProtoList(generalList, configs),
@@ -123,9 +127,8 @@ func (this *Connect) UserDataRequest() error {
 		TempItemDiamonds: []int32{int32(tempItemDiamond[0]), int32(tempItemDiamond[1]), int32(tempItemDiamond[2]), int32(tempItemDiamond[3])},
 		CoinProducts:     coinProductProtoList,
 		DiamondProducts:  productProtoList,
-		LeaderId:         proto.Int32(int32(this.Role.GeneralBaseId))}
-
-	return this.Send(StatusOK, response)
+		LeaderId:         proto.Int32(int32(this.Role.GeneralBaseId)),
+		StaminaTimeMax:   proto.Int32(int32(models.Role.ActionWaitTime))})
 }
 
 // 随机生成角色名字

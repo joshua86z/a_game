@@ -158,7 +158,7 @@ func (this *Connect) verify(token string) bool {
 		this.Uid = uid
 		Role, err := models.Role.Role(uid)
 		if err == sql.ErrNoRows {
-			if Role, err = models.Role.Insert(uid); err != nil {
+			if Role, err = models.Role.NewRole(uid); err != nil {
 				// 插入失败
 				return false
 			}

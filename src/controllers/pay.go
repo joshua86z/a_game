@@ -3,8 +3,10 @@ package controllers
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"fmt"
+	"math/rand"
 	"models"
 	"protodata"
+	"time"
 )
 
 func (this *Connect) BuyDiamondRequest() error {
@@ -19,10 +21,27 @@ func (this *Connect) BuyDiamondRequest() error {
 	payCenter := models.ConfigPayCenterList()
 	product := payCenter[index-1]
 
-	response := &protodata.BuyDiamondResponse{
-		OrderId: proto.String(models.InsertOrder(this.Uid, product.Rmb, product.Diamond)),
+	now := time.Now()
+	orderId := fmt.Sprintf("101%s%05d", now.Format("200601021504"), rand.Intn(100000))
+
+	user, err := models.User.User(this.Uid)
+	if err != nil {
+		return this.Send(lineNum(), err)
 	}
-	return this.Send(StatusOK, response)
+
+	order := &models.OrderData{
+		OrderId:    orderId,
+		PlatId:     user.PlatId,
+		Uid:        this.Uid,
+		Money:      product.Money,
+		Diamond:    product.Diamond,
+		CreateTime: now.Unix()}
+
+	if err := models.DB().Insert(order); err != nil {
+		return this.Send(lineNum(), err)
+	}
+
+	return this.Send(StatusOK, &protodata.BuyDiamondResponse{OrderId: proto.String(orderId)})
 }
 
 func (this *Connect) BuyCoinRequest() error {

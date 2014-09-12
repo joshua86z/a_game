@@ -50,16 +50,9 @@ func (this UserModel) GetUserByName(name string) *UserData {
 	return UserData
 }
 
-func (this UserModel) User(uid int64) *UserData {
-
+func (this UserModel) User(uid int64) (*UserData, error) {
 	UserData := new(UserData)
-
-	err := DB().SelectOne(UserData, "SELECT * FROM "+User.tableName+" WHERE uid = ? LIMIT 1", uid)
-	if err != nil {
-		DBError(err)
-	}
-
-	return UserData
+	return UserData, DB().SelectOne(UserData, "SELECT * FROM "+User.tableName+" WHERE uid = ? LIMIT 1", uid)
 }
 
 func (this UserModel) GetUserByOtherId(otherId string, platId int) *UserData {

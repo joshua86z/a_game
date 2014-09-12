@@ -124,6 +124,8 @@ func (this *Connect) FriendList() error {
 
 	response.FriendList1 = list1
 	response.FriendList2 = list2
+	response.GiveNum = proto.Int32(int32(len(FriendAction.Map)))
+	response.GiveMax = proto.Int32(5)
 	return this.Send(StatusOK, response)
 }
 
@@ -138,8 +140,8 @@ func (this *Connect) GiveAction() error {
 
 	FriendAction := models.NewFriendAction(this.Uid)
 
-	if len(FriendAction.Map) >= 20 {
-		return this.Send(lineNum(), fmt.Errorf("今天已送了20个人不能再送"))
+	if len(FriendAction.Map) >= 5 {
+		return this.Send(lineNum(), fmt.Errorf("今天已送了5个人不能再送"))
 	}
 
 	if _, ok := FriendAction.Map[fid]; ok {
